@@ -1,0 +1,202 @@
+
+
+a(X,Y), b(Y,Z), c(X,Z) <==> d(Z,Y,Z)
+
+-->
+
+a(X1,Y1), b(Y2,Z1), c(X2,Z2) | X1 := X2, X2 := X1, Y1 := Y2, Y2 := Y1, Z1 := Z2, Z2 := Z1 <==> d(Z,Y,Z)
+
+
+
+a(X:Xs), b(X) <==> ...
+
+-->
+
+a(Xs'), b(X) | Xs' = X:Xs <==> ...
+
+
+####################################
+
+Example 1
+
+a(X,Y), b(Y), c(Xs) | X < Y, X in Xs
+
+
+a (X, Eq),(Y, Eq)
+
+b (Y, Eq),(X, X < Y)
+
+c (Xs, Eq),(X, X in Xs)
+
+
+active a(X,Y)
+lookup hash<b(Y)> b(Y)
+Guard X < Y
+lookup linear<> c(Xs)
+Guard X in Xs
+
+
+active c(Xs)
+lookup member<a(X,_),X in Xs> a(X,Y)
+lookup hash<b(Y)> b(Y)
+Guard X < Y
+
+
+active b(Y)
+lookup hash<a(_,Y)> a(X,Y)
+Guard X < Y
+lookup linear<> c(Xs)
+Guard X in Xs
+
+####################################
+
+Example 2
+
+a(X,Y), b(V,W) | X < V
+
+a  -- eq := {X,Y} , gt := {(V,X)}
+b  -- eq := {V,W} , lt := {(X,V)}
+
+active a(X,Y)                   ctxt : eq -> {X,Y}  ord -> {(V,Gt,X)}
+lookup gt<b(V,_),X> b(V,W)      ctxt : eq -> {X,Y,V,W}  ord -> {(V,Gt,X),(X,Lt,V)}
+
+
+active b(V,W)                   ctxt : eq -> {V,W}  ord -> {(X,Lt,V)}
+lookup lt<a(X,_),V> a(X,Y)
+
+hash<a(+,-)|.>
+ord<a(X,-)|X<+>
+mem(a(X,-)| (X,-) in +)
+
+####################################
+
+Example 3
+
+a(X,Y) , b(Xs) | (X,Y) in Xs
+
+a : (X, Eq), (Y, Eq)
+b : (Xs, Eq), ([X,Y], (X,Y) in Xs)
+
+active b(Xs)
+lookup member<a(X,Y), (X,Y) in Xs> a(X,Y)
+
+
+###################################
+
+Example 4
+
+a(X), b(Y), c(Ws) | (X,Y) in Ws
+
+a : Eq(X)
+b : Eq(Y)
+c : Eq(Ws) , Mem([X,Y], (X,Y) in Ws)
+
+
+active a(X)                              ctxt : eq(X)
+lookup linear<> c(Ws)                    ctxt : eq(X), eq(Ws), mem([X,Y], (X,Y) in Ws)
+lookup Mem<b(Y), (X',Y) in Ws> b(Y)       ctxt : eq(X), eq(Ws), eq(Y), mem([X,Y], (X,Y) in Ws)
+Guard X == X'
+
+
+#########################################
+
+Example 5
+
+rule pivotSwap :: [X]swap(Y,P), { [X]data(D) | D <- Xs. D >= P }, { [Y]data(D) | D <- Ys. D < P } 
+                     --o { [Y]data(D) | D <- Xs }, { [X]data(D) | D <- Ys }.
+
+
+
+activeAtom simp [X]swap(Y,P) #1
+lookupCompre simp D<-Xs hash<[*]data(_)> [X]data(D) #2
+guardCompre D<-Xs  D>=P 
+lookupCompre simp D<-Ys hash<[*]data(_)> [Y]data(D) #3
+guardCompre D<-Ys D<P
+DiffCompre #2 #3
+
+
+activeCompre simp [X]data(D) #1
+lookupAtom simp hash<[*]swap(_,_)> [X]swap(Y,P) #2
+guardAtom D>=P
+lookupCompre D<-Xs simp hash<[*]data(_)> [X]data(D) #3
+guardCompre  D<-Xs D>=P
+excludeAtom #1 #3
+lookupCompre D<-Ys simp hash<[*]data(_)> [Y]data(D) #4
+guardCompre  D<-Ys D<P
+diffCompre #3 #4
+
+
+################################################
+
+[X]a(Y, Z), { [X]b(Y, W, V) | (V,W) <- Ws. Z < V }
+
+
+[X]a(Y, Z)     ::   EQ = {X,Y,Z}
+[X]b(Y, W, V)  ::   EQ = {X,Y,W,V}   ORD = {(Z,LT,Z<V)}
+
+a:1 hash<[*]a(*,_)>     ==>  1:hash<1:[X]a(Y,-)|X=+,Y=+> 
+b:1 hash<[*]b(*,_,_)>   ==>  2:hash<2:[X]b(Y,-,-)|X=+,Y=+>
+
+
+activeAtom simp [X]a(Y,Z) #1
+lookupCompre (V,W)<-Ws <b:1:[X,Y]> [X]b(Y,W,V) #2
+guardCompre (V,W)<-Ws Z<V
+
+
+activeCompre simp [X]b(Y,W,V) #1
+lookupAtom <a:1> [X]a(Y,Z) #2
+guardAtom Z<V
+lookupCompre (V,W)<-Ws <b:1:[X,Y]> [X]b(Y,W,V) #3
+guardCompre (V,W)<-Ws Z<V
+excludeAtom #1 #3
+
+activeCompre simp [X]b(Y,W,V) #1
+lookupAtom 1:hash<1:[X]a(Y,-)|X=+,Y=+> <X,Y> <Z> #2
+guardAtom Z<V
+lookupCompre (V,W)<-Ws 2:hash<2:[X]b(Y,-,-)|X=+,Y=+> <X,Y> <W,V> #3
+guardCompre (V,W)<-Ws Z<V
+excludeAtom #1 #3
+
+###################################################
+
+[X]a(V), { [Y]b(W) | (Y,W)<-Us. V<W }
+
+[X]a(V)    :: EQ = {X,V}
+[Y]b(W)    :: EQ = {Y,W}    ORD = {(V,LT,V<W)}
+
+b:1 ord<[_]b(W)|*<W>
+## b:1 lt<[_]b(W)|V<W>
+
+activeAtom simp [X]a(V) #1
+lookupCompre (Y,W)<-Us <b:1:lt:V> [Y]b(W) #2
+
+###################################################
+
+
+[X]a(Vs), { [Y]b(V,W) | (Y,V,W)<-Ws. (V,W) in { (V,W) | (V,W,J) <- Vs } }
+
+[X]a(Vs)    :: EQ = {X,Vs}
+
+[Y]b(V)     :: EQ = {Y,V}    MEM = {[V,W],(V,W) in Vs)}
+
+b:1 mem<[_]b(V,W)|(V,W) in *>
+
+activeAtom simp [X]a(Vs)  #1
+lookupCompre (Y,V,W)<-Ws <b:1:Vs> [Y]b(V,W)
+
+
+####################################################
+
+[X]a(Ws), [Y]b(V,H), [Z]c(R,H) | (V,R) in Ws
+
+b:1 mem<[-]b(V,-)|(V,-) in +>
+c:1 mem<[-]c(R,-)|(-,R) in +>
+c:2 hash<[-]c(#1,#2)|#1=+,#2=+>
+
+activeAtom simp [X]a(Ws)                      #1
+lookupAtom mem<[-]b(#1,-)|(#1,-) in +> <Ws> <Y,V,H,R>  #2
+lookupAtom hash<[-]c(+,+)|.)> <R,H> <Z>       #3
+
+
+ord<a(#1,-)|#1 < +>  <W>  <V,X>
+

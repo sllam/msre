@@ -1,0 +1,57 @@
+
+ensem ghs {
+
+	extern "msre/ext_lib.h" {
+		reduce_min :: {(A,A,int)} -> (A,A,int),
+		union_it :: ({A},{A}) -> {A},
+		contains :: ({A},A) -> bool,
+		len :: [A] -> int
+	}
+
+	predicate findMWOE  :: ({loc}) -> fact.
+	predicate foundMWOE :: ({loc}) -> fact.
+	predicate edge      :: (loc,int) -> fact.
+	predicate level     :: (int) -> fact.
+	predicate combine   :: (loc,int,loc,loc,int) -> fact.
+	predicate merge     :: (loc,loc,loc,int) -> fact. 
+	predicate forward   :: (loc) -> fact.
+	predicate mstEdge   :: (loc,int) -> fact.
+
+	predicate seekMWOE  :: ({loc}, int, loc, loc, int, [(loc,loc,int)]) -> fact.
+	predicate completeMWOE :: ({loc}, int, loc, loc, int, [(loc,loc,int)]) -> fact.
+	predicate deleteEdges :: (loc,{loc},{loc}) -> fact.
+
+	rule start_find  :: [X]level(L) \ [X]findMWOE(Is), [I]edge(O,V) | contains(Is,I) --o [X]seekMWOE(Is, L, I, O, V, []).
+	rule iter_find_1 :: [X]seekMWOE(Is,L,I1,O1,V1,Hs), [I2]edge(O2,V2) | contains(Is,I2), V2 < V1  --o [X]seekMWOE(Is,L,I2,O2,V2,[(I1,O1,V1)|Hs]).
+	rule iter_find_2 :: [X]seekMWOE(Is,L,I1,O1,V1,Hs), [I2]edge(O2,V2) | contains(Is,I2), V2 >= V1 --o [X]seekMWOE(Is,L,I1,O1,V1,[(I2,O2,V2)|Hs]).
+	rule end_find    :: [X]seekMWOE(Is,L,Im,Om,Vm,Hs) --o  [X]completeMWOE(Is,L,Im,Om,Vm,Hs).
+	rule comp_find_1 :: [X]completeMWOE(Is,L,Im,Om,Vm,Gs) | (len(Gs)) > 0 --o [I]edge(O,V),[X]completeMWOE(Is,L,Im,Om,Vm,Hs) where [(I,O,V)|Hs] = Gs.
+	rule comp_find_2 :: [X]completeMWOE(Is,L,Im,Om,Vm,Gs) | (len(Gs)) == 0 --o [X]foundMWOE(Is), [Om]combine(X,L,Im,Om,Vm). 
+
+	rule cmb1 :: [X]combine(Y,L,O,I,V), [Y]combine(X,L,I,O,V), [X]level(L), [Y]level(L) 
+                        --o [X]merge(Y,I,O,V), [X]level(L+1).
+
+	rule cmb2 :: [X]level(L1) \ [X]combine(Y,L2,I,O,V) | L1 > L2 --o [X]merge(Y,I,O,V).
+
+	rule mrg :: [X]merge(Y,Im,Om,Vm), [X]foundMWOE(Is1), [Y]foundMWOE(Is2)
+                        --o [X]deleteEdges(Y,Is1,Is2), [Im]mstEdge(Om,Vm), [Om]mstEdge(Im,Vm).
+	rule del_1 :: [X]deleteEdges(Y,Is1,Is2) \ [I]edge(O,V) | contains(Is1,I), contains(Is2,O) --o 1.
+	rule del_2 :: [X]deleteEdges(Y,Is1,Is2) \ [I]edge(O,V) | contains(Is2,I), contains(Is1,O) --o 1.
+	rule del_3 :: [X]deleteEdges(Y,Is1,Is2) --o [X]findMWOE(union_it(Is1,Is2)), [Y]forward(X).
+
+	rule fwd :: [O1]forward(O2) \ [O1]combine(X,L,I,O,V) --o [O2]combine(X,L,I,O,V). 
+
+}
+
+execute ghs {
+
+	exists L0, L1, L2, L3, L4, L5.
+	[L0]findMWOE({L0}), [L1]findMWOE({L1}), [L2]findMWOE({L2}), [L3]findMWOE({L3}), [L4]findMWOE({L4}), [L5]findMWOE({L5}).
+	[L0]level(0), { [L0]edge(O,V) | (O,V) <- {(L1,10),(L2,12),(L3,7)} }.
+	[L1]level(0), { [L1]edge(O,V) | (O,V) <- {(L0,10),(L2,1),(L4,30),(L5,2)} }.
+	[L2]level(0), { [L2]edge(O,V) | (O,V) <- {(L0,12),(L1,1),(L5,41),(L3,3)} }.
+	[L3]level(0), { [L3]edge(O,V) | (O,V) <- {(L0,7),(L2,3),(L4,11)} }.
+	[L4]level(0), { [L4]edge(O,V) | (O,V) <- {(L1,30),(L3,11)} }.
+	[L5]level(0), { [L5]edge(O,V) | (O,V) <- {(L2,41),(L1,2)} }.
+}
+

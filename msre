@@ -1,0 +1,28 @@
+
+source msre.conf
+
+if [ $# -eq 0 ];
+then
+    echo "Usage: msre <.msr file>"
+    exit 1
+fi
+
+args=("$@")
+
+MSRE_SRC_FILE=${args[0]}
+MSRE_NAME=$(echo ${args[0]} | sed 's!.*/!!' | sed "s/.msr//")
+CPP_NAME=${MSRE_NAME}.cpp
+BIN_NAME=${MSRE_NAME}
+
+echo "Compiling and Generating cpp codes for ${MSRE_SRC_FILE}..."
+${PY_EXEC} ${MSRE_LIB_PATH}/msre.py ${MSRE_SRC_FILE}
+
+echo "Compiling generated cpp codes..."
+${CPP_EXEC} -I${MSRE_LIB_PATH}/cpp ${CPP_NAME} -lboost_mpi -lboost_serialization -o ${BIN_NAME}
+
+echo "Cleaning up intermediate files..."
+rm -f ${CPP_NAME}
+rm -f parser.out
+rm -f parsetab.py
+
+echo "All done!"

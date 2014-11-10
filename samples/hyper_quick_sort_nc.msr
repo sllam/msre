@@ -1,0 +1,65 @@
+
+ensem hyper_quick_sort {
+
+	extern "msre/ext_lib.h" {
+		split  :: [A] -> ([A],[A]),
+		pickone  :: [A] -> A,
+		computemedian :: [int] -> int,
+		zip :: ([A],[A]) -> [(A,A)],
+		len :: [A] -> int
+	}
+
+	predicate data     :: (int) -> fact.
+	predicate ret_data :: ([int]) -> fact.
+	predicate find_median :: ([int]) -> fact.
+	predicate median  :: (int) -> fact.
+	predicate partnerLink :: (loc,int,loc,[int],[int]) -> fact.
+	predicate distPartnerLinks :: (int,[(loc,loc)]) -> fact.
+	predicate leaderLinks :: ([loc]) -> fact.
+	predicate spawnCounter :: int -> fact.
+	predicate spawnLeaders :: (loc,loc,[loc],[loc],int) -> fact.
+	predicate ret_data2 :: ([int]) -> fact.
+
+	rule find_median1 :: [X]data(D), [X]find_median(Ds) --o [X]find_median([D|Ds]).
+	rule find_median2 :: [X]find_median(Ds) --o [X]ret_data(Ds), [X]median(computemedian(Ds)).
+
+	rule ret_data1 :: [X]ret_data(Ds) | (len(Ds)) > 0 --o [X]ret_data(Rs), [X]data(D) where [D|Rs] = Ds.
+	rule ret_data2 :: [X]ret_data(Ds) | (len(Ds)) == 0 --o 1.
+
+	rule leader_reduce :: [X]leaderLinks(G) | (len(G)) <= 1 --o 1.
+
+	rule leader_expand :: [X]median(M), [X]leaderLinks(G)
+                              --o [X]distPartnerLinks(M,zip(Gl,Gg)),   
+                                  [X]spawnLeaders(X,Z,Gl,Gg,len(Gl))
+                                  where (Gl,Gg) = split(G), 
+                                        Z = pickone(Gg).
+
+	rule partner1 :: [X]distPartnerLinks(M,Ds) | (len(Ds)) > 0 --o [X]distPartnerLinks(M,Gs), [Y]partnerLink(W,M,X,[],[])
+                                                                       where [(Y,W)|Gs] = Ds.
+	rule partner2 :: [X]distPartnerLinks(M,Ds) | (len(Ds)) == 0 --o 1.
+
+	rule swap1 :: [X]partnerLink(W,M,L,Xs,Ys), [X]data(D) | D >= M --o [X]partnerLink(W,M,L,[D|Xs],Ys).
+	rule swap2 :: [X]partnerLink(W,M,L,Xs,Ys), [Y]data(D) | D < M  --o [X]partnerLink(W,M,L,Xs,[D|Ys]).
+	rule swap3 :: [X]partnerLink(W,M,L,Xs,Ys) --o [X]ret_data2(Ys), [W]ret_data2(Xs), [L]spawnCounter(1).
+
+	rule ret_data3 :: [X]ret_data2(Ds) | (len(Ds)) > 0 --o [X]ret_data2(Rs), [X]data(D) where [D|Rs] = Ds.
+	rule ret_data4 :: [X]ret_data2(Ds) | (len(Ds)) == 0 --o 1.
+
+	rule spawn1 :: [L]spawnCounter(X), [L]spawnCounter(Y) --o [L]spawnCounter(X+Y).
+	rule spawn2 :: [X]spawnLeaders(W,Z,Gl,Gg,L), [X]spawnCounter(I)
+                          | I == L --o [X]find_median([]), [X]leaderLinks(Gl),
+                                       [Z]find_median([]), [Z]leaderLinks(Gg).
+
+}
+
+execute hyper_quick_sort {
+
+	exists L0, L1, L2, L3.
+
+	[L0]find_median([]), [L0]leaderLinks([L0,L1,L2,L3]).
+	{ [L0]data(X) | X <- { 1,10,200,4000 } }.
+	{ [L1]data(X) | X <- { 4,5,340,1070 } }.
+	{ [L2]data(X) | X <- { 3,47,890,9070 } }.
+	{ [L3]data(X) | X <- { 21,1340,7921,24 } }.
+
+}

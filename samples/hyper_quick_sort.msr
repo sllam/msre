@@ -1,0 +1,49 @@
+
+ensem hyper_quick_sort {
+
+	extern "msre/ext_lib.h" {
+		split  :: {A} -> ({A},{A}),
+		computemedian :: {int} -> int,
+		pickone :: {A} -> A,
+		zip :: ({A},{A}) -> {(A,A)},
+		len :: {A} -> int
+	}
+
+	predicate data   :: (int) -> fact.
+	predicate find_median :: fact.
+	predicate median  :: (int) -> fact.
+	predicate partnerLink :: (loc,int,loc) -> fact.
+	predicate leaderLinks :: ({loc}) -> fact.
+	predicate spawnCounter :: int -> fact.
+	predicate spawnLeaders :: (loc,loc,{loc},{loc},int) -> fact.
+
+	rule find_median :: { [X]data(D) | D <- Ds } \ [X]find_median() --o [X]median(M) where M = computemedian(Ds).
+
+	rule leader_reduce :: [X]leaderLinks(G) | (len(G)) <= 1 --o 1.
+
+	rule leader_expand :: [X]median(M), [X]leaderLinks(G)
+                              --o { [Y]partnerLink(W,M,X) | (Y,W) <- zip(Gl,Gg) },
+                                  [X]spawnLeaders(X,Z,Gl,Gg,len(Gl))
+                                  where (Gl,Gg) = split(G),
+                                        Z       = pickone(Gg).
+
+	rule swap :: [X]partnerLink(Y,M,L), { [X]data(D) | D <- Xs. D >= M }, { [Y]data(D) | D <- Ys. D < M } 
+                          --o { [X]data(D) | D <- Ys }, { [Y]data(D) | D <- Xs }, [L]spawnCounter(1).
+
+	rule spawn :: [X]spawnLeaders(W,Z,Gl,Gg,L), { [X]spawnCounter(I) | I <- Cs }
+                          | (len(Cs)) == L --o [X]find_median(), [X]leaderLinks(Gl),
+                                               [Z]find_median(), [Z]leaderLinks(Gg).
+
+}
+
+execute hyper_quick_sort {
+
+	exists L0, L1, L2, L3.
+
+	[L0]find_median(), [L0]leaderLinks({L0,L1,L2,L3}).
+	{ [L0]data(X) | X <- { 1..10 } }.
+	{ [L1]data(X*2) | X <- { 1..10 } }.
+	{ [L2]data(X*3) | X <- { 1..10 } }.
+	{ [L3]data(X*4) | X <- { 1..10 } }.
+
+}

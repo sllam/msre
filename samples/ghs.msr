@@ -1,0 +1,49 @@
+
+ensem ghs {
+
+	extern "msre/ext_lib.h" {
+		reduce_min :: {(A,A,int)} -> (A,A,int),
+		union_it :: ({A},{A}) -> {A},
+		len :: {B} -> int,
+		contains :: ({A},A) -> bool
+	}
+
+	predicate findMWOE  :: ({loc}) -> fact.
+	predicate foundMWOE :: ({loc}) -> fact.
+	predicate edge      :: (loc,int) -> fact.
+	predicate level     :: (int) -> fact.
+	predicate combine   :: (loc,int,loc,loc,int) -> fact.
+	predicate merge     :: (loc,loc,loc,int) -> fact. 
+	predicate forward   :: (loc) -> fact.
+	predicate mstEdge   :: (loc,int) -> fact.
+
+	rule find :: [X]level(L) \ [X]findMWOE(Is), { [I]edge(O,V) | (I,O,V) <- Es. contains(Is,I) }
+                    | (len(Es)) > 0 --o [X]foundMWOE(Is), { [I]edge(O,V) | (I,O,V) <- Rs }, [Om]combine(X,L,Im,Om,Vm)
+                                        where (Im,Om,Vm) = reduce_min(Es),
+                                              Rs = { (I,O,V) | (I,O,V) <- Es. V != Vm }. 
+
+	rule cmb1 :: [X]combine(Y,L,O,I,V), [Y]combine(X,L,I,O,V), [X]level(L), [Y]level(L) 
+                        --o [X]merge(Y,I,O,V), [X]level(L+1).
+
+	rule cmb2 :: [X]level(L1) \ [X]combine(Y,L2,I,O,V) | L1 > L2 --o [X]merge(Y,I,O,V).
+
+	rule mrg :: [X]merge(Y,Im,Om,Vm), [X]foundMWOE(Is1), [Y]foundMWOE(Is2),
+                    { [I]edge(O,V) | (I,O,V) <- Es1. contains(Is1,I), contains(Is2,O) },
+                    { [I]edge(O,V) | (I,O,V) <- Es2. contains(Is2,I), contains(Is1,O) }
+                        --o [X]findMWOE(union_it(Is1,Is2)), [Y]forward(X), [Im]mstEdge(Om,Vm), [Om]mstEdge(Im,Vm).
+
+	rule fwd :: [O1]forward(O2) \ [O1]combine(X,L,I,O,V) --o [O2]combine(X,L,I,O,V). 
+
+}
+
+execute ghs {
+
+	exists L0, L1, L2, L3, L4, L5.
+	[L0]findMWOE({L0}), [L1]findMWOE({L1}), [L2]findMWOE({L2}), [L3]findMWOE({L3}), [L4]findMWOE({L4}), [L5]findMWOE({L5}).
+	[L0]level(0), { [L0]edge(O,V) | (O,V) <- {(L1,10),(L2,12),(L3,7)} }.
+	[L1]level(0), { [L1]edge(O,V) | (O,V) <- {(L0,10),(L2,1),(L4,30),(L5,2)} }.
+	[L2]level(0), { [L2]edge(O,V) | (O,V) <- {(L0,12),(L1,1),(L5,41),(L3,3)} }.
+	[L3]level(0), { [L3]edge(O,V) | (O,V) <- {(L0,7),(L2,3),(L4,11)} }.
+	[L4]level(0), { [L4]edge(O,V) | (O,V) <- {(L1,30),(L3,11)} }.
+	[L5]level(0), { [L5]edge(O,V) | (O,V) <- {(L2,41),(L1,2)} }.
+}

@@ -1,0 +1,32 @@
+
+
+
+a(X,Y,Zs), b(X,Y,Z) | (Y,Z) in Zs
+
+hash+mem<b(+,+,Z) | (-,Z) in +> <X,Y,Zs> <Z>
+
+
+c(Y), a(X,W,Zs), b(X,Y,Z) | (Y,Z) in Zs
+
+###########################################################
+
+a(X,Y), b(X,Z) | Y < Z
+
+hash+ord<b(+,Z) | + < Z> <X,Y> b(X,Z)
+
+
+###########################################################
+
+hash+mem<b(+,+,Z) | (+,Z) in +> <X,Y,Zs> b(X,Y,Z)
+
+hash_mem_b1(X, Y, Zs):
+	all_cands = []
+	inner_cols = outer_cols.get_index( X+Y )
+	for (_,Z) in Zs:
+		cands = inner_cols.get_index(Z)
+		all_cands += cands
+	return all_cands
+
+for cand in hash_mem_b1(X, Y, Zs)
+	if match(b(X,Y,Z),cand):
+		...

@@ -1,0 +1,27 @@
+
+ensem mergesort {
+
+	extern "msre/ext_lib.h" {
+		len   :: [int] -> int,
+		split :: [int] -> ([int],[int]),
+		merge :: ([int],[int]) -> [int]
+	}
+
+	predicate unsorted :: [int] -> fact.
+	predicate sorted   :: [int] -> fact.
+	predicate parent   :: loc -> fact.
+	predicate unmerged :: [int] -> fact.
+
+	rule r_split :: [X]unsorted(Xs) | (len(Xs)) >= 2 --o exists Y,Z. [Y]parent(X), [Y]unsorted(Ys), [Z]parent(X), [Z]unsorted(Zs) priority 2
+                                                             where (Ys,Zs) = split(Xs).
+	rule r_base  :: [X]unsorted(Xs) | (len(Xs)) < 2 --o [X]sorted(Xs).
+	rule r_ret   :: [Y]sorted(Xs),[Y]parent(X) --o [X]unmerged(Xs).
+	rule r_ret2  :: [X]sorted(Xs),[Y]parent(X) --o [X]unmerged(Xs).
+	rule r_merge :: [X]unmerged(Xs1), [X]unmerged(Xs2) --o [X]sorted(merge(Xs1,Xs2)).
+
+}
+
+execute mergesort {
+	exists L0.
+	[L0]unsorted([5,4,9,6,10,11,3,2,7,1,8]).
+}

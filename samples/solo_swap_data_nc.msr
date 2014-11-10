@@ -1,0 +1,38 @@
+pragma solo.
+
+ensem swapper {
+
+	extern "msre/ext_lib.h" {
+		len   :: [int] -> int
+	}
+
+	predicate swap   :: (dest,dest,int) -> fact.
+	predicate grabGE :: (dest,int,dest,[int]) -> fact.
+	predicate grabLT :: (dest,int,dest,[int]) -> fact.
+	predicate data   :: (dest,int) -> fact.
+	predicate unrollData :: (dest,[int]) -> fact.
+
+	rule ini :: swap(X,Y,P) --o grabGE(X,P,Y,[]), grabLT(Y,P,X,[]).
+
+	rule ge1 :: grabGE(X,P,Y,Ds), data(X,D) | D >= P --o grabGE(X,P,Y,[D|Ds]).
+	rule ge2 :: grabGE(X,P,Y,Ds) --o unrollData(Y,Ds).
+
+	rule lt1 :: grabLT(Y,P,X,Ds), data(Y,D) | D < P --o grabLT(Y,P,X,[D|Ds]).
+	rule lt2 :: grabLT(Y,P,X,Ds) --o unrollData(X,Ds).
+
+	rule unroll1 :: unrollData(L,Ds) | (len(Ds)) > 0 --o unrollData(L,Rs),data(L,D) where [D|Rs] = Ds.
+	rule unroll2 :: unrollData(L,Ds) | (len(Ds)) == 0 --o 1. 
+
+}
+
+execute swapper {
+
+	exists L0, L1.
+	swap(L0,L1,100).
+	Zs = { 1..100 }.
+	Xs = { 2 * X | X <- Zs }.
+	Ys = { (2 * Y) - 1 | Y <- Zs }.
+	{ data(L0,X) | X <- Xs }.
+	{ data(L1,Y) | Y <- Ys }.
+
+}
