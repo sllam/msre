@@ -23,6 +23,8 @@ http://www.qatar.cmu.edu/~sllam/my_papers/published/SLLAM_chr14.pdf
 iii. "Optimized Compilation of Multiset Rewriting with Comprehensions", tech report (also appearing in APLAS'2014)
 http://www.qatar.cmu.edu/~sllam/my_papers/techreport/SLLAM_TR14-119.pdf
 
+Just want a quick demo? We have an online demo that compiles and runs MSRE programs! Visit http://rise4fun.com/msre
+
 Basic Requirements
 ==================
 
