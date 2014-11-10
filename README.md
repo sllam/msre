@@ -60,8 +60,8 @@ Once that is done you are set! Go to the `samples' directory and try out MSRE!
 > cd samples
 > msre ghs.msr
 
-This should compile the MSRE program ghs.msr, producing an executable `ghs'. Its a standalone MPI program, so
-you will need something like `mpirun' to execute it.
+This should compile the MSRE program ghs.msr, producing an executable ghs. Its a standalone MPI program, so
+you will need something like mpirun to execute it.
 
 > mpirun -n 1 ghs outputfile
 
