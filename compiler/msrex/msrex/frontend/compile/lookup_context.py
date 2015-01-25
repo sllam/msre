@@ -94,6 +94,16 @@ class LookupTables:
 				self.lookup_tables[fact_idx].append( linear_lookup )
 			'''
 
+	def padWithExportedLookup(self):
+		for fact_idx,fact_dec in self.fact_dir.fact_name_dict.values():
+			name = fact_dec.name
+			for fact in fact_dec.exported_queries:
+				linear_lookup = LinearLookup(self.fact_dir, name, exported=True)
+				table_idx = len(self.lookup_tables[fact_idx])
+				linear_lookup.setLookupIdx(table_idx)
+				self.lookup_tables[fact_idx].append( linear_lookup )
+				self.linear_table_indices[fact_idx] = table_idx	
+
 	def __repr__(self):
 		strs = "========== Lookup Tables ==========\n"
 		for pred_idx,lookups in self.lookup_tables.items():
@@ -277,7 +287,8 @@ def show_pat(p,alt='_'):
 # Currently implementation only allows pure variables for arguments
 class LookupTechnique:
 
-	def initialize(self, lookup_type, pred_idx, fact_dir, lookup_name, pred_args, guard_args, guard_str='.', assoc_guards=[]):
+	def initialize(self, lookup_type, pred_idx, fact_dir, lookup_name, pred_args, guard_args
+                      ,guard_str='.', assoc_guards=[], exported=False):
 		self.type = lookup_type
 		self.pred_idx    = pred_idx
 		self.pred_name   = fact_dir.getFactFromIdx( pred_idx ).name
@@ -300,6 +311,7 @@ class LookupTechnique:
 		self.guard_args = guard_args
 		self.guard_str  = guard_str
 		self.assoc_guards = assoc_guards
+		self.exported = exported
 
 	def signature(self):
 		var_ctxt = {}
@@ -408,8 +420,10 @@ class LookupTechnique:
 
 	def __repr__(self):
 		arg_str = ','.join(map(lambda a: show_pat(a,alt=OUTPUT),self.pred_args[1:]))
-		return "%s:%s:%s<[%s]%s(%s)|%s>" % (self.pred_idx,self.lookup_idx,self.lookup_name,show_pat(self.pred_args[0],alt=OUTPUT)
-                                                   ,self.pred_name,arg_str,self.guard_str % tuple(self.guard_args))	
+		extern = "" if not self.exported else "is external view"
+		return "%s:%s:%s<[%s]%s(%s)|%s> %s" % (self.pred_idx,self.lookup_idx,self.lookup_name,
+                                                       show_pat(self.pred_args[0],alt=OUTPUT),
+                                                       self.pred_name,arg_str,self.guard_str % tuple(self.guard_args),extern)	
 
 	def lookupArgIndices(self):
 		idxs = []
@@ -432,14 +446,14 @@ LINEAR_LK = 5
 
 # linear(pid:[_]p(_)|.)
 class LinearLookup(LookupTechnique):
-	def __init__(self, fact_dir, name):
+	def __init__(self, fact_dir, name, exported=False):
 		pred_idx,_ = fact_dir.getFactFromName( name )
 		num_args = fact_dir.getCardinality( pred_idx )
 		pred_args = []
 		for i in range(0,num_args+1):
 			pred_args.append( OUTPUT )
 		self.var_dependencies = emptyset()
-		self.initialize(LINEAR_LK, pred_idx, fact_dir, "linear", pred_args, [])		
+		self.initialize(LINEAR_LK, pred_idx, fact_dir, "linear", pred_args, [], exported=exported)		
 
 # hash(pid:[loc]p(args)|.)
 class HashLookup(LookupTechnique):

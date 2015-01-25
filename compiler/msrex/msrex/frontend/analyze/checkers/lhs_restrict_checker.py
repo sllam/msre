@@ -34,8 +34,8 @@ from msrex.frontend.analyze.checkers.base_checker import Checker
 
 class LHSRestrictChecker(Checker):
 
-	def __init__(self, decs, source_text):
-		self.initialize(decs, source_text)
+	def __init__(self, decs, source_text, builtin_preds=[]):
+		self.initialize(decs, source_text, builtin_preds=builtin_preds)
 
 	def check(self):
 		inspect = Inspector()

@@ -36,8 +36,8 @@ PRAGMA_TEXT_SOLO_EXEC = "solo"
 
 class PragmaChecker(Checker):
 
-	def __init__(self, decs, source_text):
-		self.initialize(decs, source_text)
+	def __init__(self, decs, source_text, builtin_preds=[]):
+		self.initialize(decs, source_text, builtin_preds=builtin_preds)
 		self.pragma_dict = { 'solo' : False }
 
 	def check(self):

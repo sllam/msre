@@ -220,6 +220,8 @@ DEC_LOCFACT = 'dec_locfact'
 DEC_FACT    = 'dec_fact'
 DEC_RULE    = 'dec_rule'
 DEC_ASSIGN  = 'dec_assign'
+DEC_FORALL  = 'dec_forall'
+DEC_EXPORT  = 'dec_export'
 
 
 class PragmaDec(ASTNode):
@@ -279,6 +281,14 @@ class ExistDec(ASTNode):
 	def __str__(self):
 		return "exist_dec([%s])" % (','.join(self.exist_vars))
 
+class ForallDec(ASTNode):
+	def __init__(self, forall_vars, parse_frag=None):
+		self.dec_type = DEC_FORALL
+		self.forall_vars = forall_vars
+		self.reg_source_info(parse_frag)
+	def __str__(self):
+		return "forall_dec([%s])" % (','.join(self.forall_vars))
+
 class LocFactDec(ASTNode):
 	def __init__(self, loc_facts, parse_frag=None):
 		self.dec_type = DEC_LOCFACT
@@ -296,8 +306,12 @@ class FactDec:
 		return "fact_dec([%s],%s)" % (','.join(self.modifiers) if len(self.modifiers) > 0 else "None",self.fact_type)
 '''
 
+MATCH_FACT = 'match'
+TRIGGER_FACT  = 'trigger'
+ACTUATOR_FACT = 'actuator'
+
 class FactDec(ASTNode):
-	def __init__(self, modifiers, name, type, parse_frag=None):
+	def __init__(self, modifiers, name, type, fact_role=MATCH_FACT, parse_frag=None):
 		self.dec_type = DEC_FACT
 		self.type = type
 		self.name = name
@@ -307,6 +321,8 @@ class FactDec(ASTNode):
 		self.local      = False
 		self.monotone   = False
 		self.uses_priority = False
+		self.fact_role = fact_role
+		self.exported_queries   = []
 	def adjust_lex(self):
 		self.hl_end = self.hl_start + len(self.name)
 	def __str__(self):
@@ -319,6 +335,38 @@ class FactDec(ASTNode):
 			return self.type.types
 		else:
 			return [self.type]
+
+class FactDecs(ASTNode):
+	def __init__(self, fact_decs, parse_frag=None):
+		self.fact_decs = fact_decs
+		self.reg_source_info(parse_frag)
+	def __str__(self):
+		return "fact_decs(%s)" % (','.join(map(lambda f: f.str(), self.fact_decs)))
+
+QUERY_EXPORT = 'query'
+TRIGGER_EXPORT = 'trigger'
+ACTUATOR_EXPORT = 'actuator'
+
+class ExportDec(ASTNode):
+	def __init__(self, export_sort, arg, parse_frag=None):
+		self.dec_type = DEC_EXPORT
+		self.export_sort = export_sort
+		self.arg = arg
+		self.reg_source_info(parse_frag)
+	def __str__(self):
+		return "query(%s,%s)" % (self.export_sort,self.arg)
+
+PERSISTENCY = 'persist'
+STORAGE  = 'storage'
+EXTVIEW  = 'extview'
+
+class FactMod(ASTNode):
+	def __init__(self, name, args, parse_frag=None):
+		self.name = name
+		self.args = args
+		self.reg_source_info(parse_frag)
+	def __str__(self):
+		return "fact_mod(%s,%s)" % (self.name,self.args)
 
 class RuleDec(ASTNode):
 	def __init__(self, name, lhs, rhs, where=None, exists=None, parse_frag=None):

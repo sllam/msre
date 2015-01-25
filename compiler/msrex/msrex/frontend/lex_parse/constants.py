@@ -33,3 +33,8 @@ CHAR   = 'char'
 STRING = 'string'
 BOOL   = 'bool'
 DEST   = 'dest'
+
+BOOL_CONSTANTS = ['true','false']
+
+BUILTIN_CONSTANTS = BOOL_CONSTANTS
+

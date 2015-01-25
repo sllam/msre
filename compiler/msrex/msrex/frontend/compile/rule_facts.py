@@ -88,6 +88,14 @@ class FactDirectory:
 			strs += "  Is Local: %s\n" % ('Yes' if fact_dec.local else 'No')
 			strs += "  Is Monotonic: %s\n" % ('Yes' if fact_dec.monotone else 'No')
 			strs += "  Uses Priorities: %s\n" % ('Yes' if fact_dec.uses_priority else 'No')
+			if len(fact_dec.modifiers) > 0:
+				strs += "  Modifiers: \n"
+				for mod in fact_dec.modifiers:
+					strs += "     %s %s\n" % (mod.name,mod.args)
+			if len(fact_dec.exported_queries) > 0:
+				strs += "  Exported Queries: \n"
+				for fact in fact_dec.exported_queries:
+					strs += "     %s\n" % (fact)
 		strs += "===========================================\n"
 		return strs
 

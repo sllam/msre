@@ -28,13 +28,15 @@ Foundation). The statements made herein are solely the responsibility of the aut
 from ply import lex
 
 reserved = { "module"    : "MODULE"
+           , "import"    : "IMPORT"
+           , "export"    : "EXPORT"
            , "extern"    : "EXTERN"
            , "fact"      : "FACT"
            , "predicate" : "PRED"
            , "in"     : "IN"
-           , "not"    : "NOT"
            , "where"  : "WHERE" 
            , "exists" : "EXISTS"
+           , "forall" : "FORALL"
            , "rule"   : "RULE"
            , "with"   : "WITH"
            , "such"   : "SUCH"
@@ -43,7 +45,11 @@ reserved = { "module"    : "MODULE"
            , "ensem"  : "ENSEM"
            , "execute"   : "EXEC"
            , "priority"  : "PRIORITY"
-           , "pragma"    : "PRAGMA" }
+           , "pragma"    : "PRAGMA"
+           , "actuator"  : "ACTUATOR" 
+           , "trigger"   : "TRIGGER"
+           , "query"     : "QUERY"
+           , "calls"     : "CALLS" }
 
 tokens = [
 	"IMPLIES",		# ==>
@@ -102,7 +108,7 @@ def t_INT(t):
 	t.value = int(t.value)
 	return t
 
-t_STRING   = r'\"[a-zA-Z0-9_+ ]*\"'
+t_STRING   = r'\"[a-zA-Z0-9_+ !%]*\"'
 
 t_CHAR = r'\'[a-zA-Z0-9_+ ]\'' 
 

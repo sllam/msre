@@ -35,7 +35,7 @@ from collections import defaultdict
 
 class ProgCompilation:
 
-	def __init__(self, ensem_dec, rules, fact_dir, extern_decs, exec_dec, prog_name):
+	def __init__(self, ensem_dec, rules, fact_dir, extern_decs, exec_dec, prog_name, source_text=""):
 		self.ensem_dec = ensem_dec
 		self.prog_name  = prog_name
 		self.ensem_name = ensem_dec.name
@@ -45,6 +45,7 @@ class ProgCompilation:
 		for rule in rules:
 			rule_compilations.append( RuleCompilation(rule, fact_dir, self.lookup_tables) )
 		self.rule_compilations = rule_compilations
+		self.lookup_tables.padWithExportedLookup()
 		self.lookup_tables.padWithLinearLookup()
 		self.rules = rules
 		self.fact_dir = fact_dir
@@ -56,6 +57,11 @@ class ProgCompilation:
 
 		self.extern_decs = extern_decs
 		self.exec_dec    = exec_dec
+
+		self.source_text = source_text
+
+	def get_source(self):
+		return self.ensem_dec.gen_snippet(self.source_text)
 
 	def getRuleNames(self):
 		inspect = Inspector()

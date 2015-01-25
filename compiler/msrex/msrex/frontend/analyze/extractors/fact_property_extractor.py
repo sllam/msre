@@ -50,8 +50,8 @@ from msrex.frontend.analyze.checkers.base_checker import Checker
 
 class FactPropertyExtractor(Checker):
 
-	def __init__(self, decs, source_text):
-		self.initialize(decs, source_text)
+	def __init__(self, decs, source_text, builtin_preds=[]):
+		self.initialize(decs, source_text, builtin_preds=builtin_preds)
 		self.rule_unique_heads = {}
 		self.rule_priority_body = {}
 
@@ -200,6 +200,16 @@ class FactPropertyExtractor(Checker):
 			rule_body = rule_dec.rhs
 			for fact in inspect.get_base_facts( rule_body ):
 				fact.monotone = fact.name not in lhs_compre_pred_names
+
+		# Annotate fact declaration nodes with export declaration information
+		export_decs = inspect.filter_decs(decs, export=True)
+		for export_dec in export_decs:
+			if export_dec.export_sort == ast.QUERY_EXPORT:
+				fact = export_dec.arg
+				for fact_dec in fact_decs:
+					if fact_dec.name == fact.name:
+						fact_dec.exported_queries.append( fact )
+						break
 
 	def get_analysis(self):
 		strs = "Analysis from Fact Property Extractor:\n"

@@ -89,6 +89,7 @@ class Rule:
 
 		inspect = Inspector()
 
+		'''
 		rule_head_var_dicts = {}
 		for rule_head_var in inspect.free_vars(rule_dec.slhs+rule_dec.plhs, loc=True, args=True, compre_binders=False):
 			rule_head_var_dicts[rule_head_var.name] = rule_head_var
@@ -98,6 +99,25 @@ class Rule:
 		for rule_head_binder in inspect.free_vars(rule_dec.slhs+rule_dec.plhs, loc=False, args=False, compre_binders=True):
 			rule_head_binder_dicts[rule_head_binder.name] = rule_head_binder
 		self.rule_head_binders = rule_head_binder_dicts.values()
+		'''
+
+		rule_head_pat_vars,rule_head_binders,rule_head_all_vars = inspect.get_all_free_vars(rule_dec.slhs+rule_dec.plhs)
+		self.rule_head_vars     = rule_head_pat_vars
+		self.rule_head_binders  = rule_head_binders
+		self.rule_head_all_vars = rule_head_all_vars
+
+		body_pat_vars,body_binders,body_all_vars = inspect.get_all_free_vars(rule_dec.rhs)
+		self.body_vars     = body_pat_vars
+		self.body_binders  = body_binders
+		self.body_all_vars = body_all_vars
+
+		where_pat_vars,where_binders,where_all_vars = inspect.get_all_free_vars(rule_dec.where)
+		self.where_vars     = where_pat_vars
+		self.where_binders  = where_binders
+		self.where_all_vars = where_all_vars
+
+		self.all_vars = inspect.set_vars( inspect.free_vars(rule_dec.slhs+rule_dec.plhs+rule_dec.rhs+rule_dec.where
+                                                                   ,loc=True, args=True, compre_binders=True) )
 
 		for head in rule_dec.slhs:
 			self.has_simplify = True

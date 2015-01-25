@@ -35,7 +35,7 @@ setup(name='msrex',
       url='http://www.qatar.cmu.edu/~sllam',
       packages=[
 		'msrex', 'msrex.frontend', 'msrex.frontend.analyze', 'msrex.frontend.analyze.checkers', 'msrex.frontend.analyze.extractors',
-		'msrex.frontend.code', 'msrex.frontend.compile', 'msrex.frontend.lex_parse', 'msrex.frontend.transform',
+		'msrex.frontend.code', 'msrex.frontend.compile', 'msrex.frontend.lex_parse', 'msrex.frontend.transform', 'msrex.frontend.builtin',
 		'msrex.misc', 'msrex.misc.z3_utils', 'msrex.frontend.rise4fun',
       ],
       install_requires=[

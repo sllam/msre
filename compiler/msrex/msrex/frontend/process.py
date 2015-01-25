@@ -49,15 +49,17 @@ from msrex.frontend.compile.lookup_context import LinearLookup, HashLookup, OrdL
 
 from msrex.frontend.compile.prog_compilation import ProgCompilation
 
+from msrex.frontend.builtin.predicates import BuiltinPred
+
 def mk_prog_name( file_name ):
 	return split(file_name, ".")[0]
 
-def process_msre(file_name, source_text=None):
+def process_msre(file_name, source_text=None, builtin_preds=[]):
 	if source_text == None:
 		(source_text, decs) = p.run_parser(file_name)
 	else:
 		decs = p.run_parser_input(source_text)
-	error_reports, analysis, data = check_validity(decs, source_text)
+	error_reports, analysis, data = check_validity(decs, source_text, builtin_preds=builtin_preds)
 
 	output = { 'source_text'   : source_text
                  , 'decs'          : decs
@@ -71,7 +73,7 @@ def process_msre(file_name, source_text=None):
 		for transformer in transformers:
 			tr = transformer( decs )
 			tr.transform()
-		prog = process_prog( decs, mk_prog_name( file_name ), data)
+		prog = process_prog( decs, mk_prog_name( file_name ), data, builtin_preds=builtin_preds, source_text=source_text)
 		output['valid'] = True
 		output['rules'] = prog.rules
 		output['fact_dir'] = prog.fact_dir
@@ -79,12 +81,13 @@ def process_msre(file_name, source_text=None):
 
 	return output
 
-def check_validity(decs, source_text, checkers=[PragmaChecker,LHSRestrictChecker,VarScopeChecker,TypeChecker,FactPropertyExtractor]):
+def check_validity(decs, source_text, checkers=[PragmaChecker,LHSRestrictChecker,VarScopeChecker,TypeChecker,FactPropertyExtractor]
+                  ,builtin_preds=[]):
 	reports = []
 	analysis = []
 	data = {}
 	for checker in checkers:
-		c = checker(decs,source_text)
+		c = checker(decs,source_text,builtin_preds=builtin_preds)
 		c.check()
 		c.init_build_display_regions()
 		reports += c.get_error_reports()
@@ -98,7 +101,7 @@ def check_validity(decs, source_text, checkers=[PragmaChecker,LHSRestrictChecker
 			break
 	return (reports,analysis,data)
 
-def process_prog( decs, prog_name, data ):
+def process_prog( decs, prog_name, data, builtin_preds=[], source_text=""):
 	# Currently assumes that there is exactly one ensemble dec and one exec dec for that emsemble.	
 	inspect = Inspector()
 	ensem_dec = inspect.filter_decs(decs, ensem=True)[0]
@@ -107,17 +110,19 @@ def process_prog( decs, prog_name, data ):
 	# print ensem_dec
 	# print exec_dec
 
-	fact_dir, externs, rules = process_ensemble( ensem_dec )
+	fact_dir, externs, rules = process_ensemble( ensem_dec, builtin_preds=builtin_preds )
 	
-	prog = ProgCompilation(ensem_dec, rules, fact_dir, externs, exec_dec, prog_name)
+	prog = ProgCompilation(ensem_dec, rules, fact_dir, externs, exec_dec, prog_name, source_text=source_text)
 
 	return prog
 
-def process_ensemble(ensem_dec):
+def process_ensemble(ensem_dec, builtin_preds=[]):
 	inspect = Inspector()
 	facts   = inspect.filter_decs(ensem_dec.decs, fact=True)
 	rules   = inspect.filter_decs(ensem_dec.decs, rule=True)
 	externs = inspect.filter_decs(ensem_dec.decs, extern=True)
+
+	facts += map(lambda bp: bp.getFactDec(), builtin_preds)
 
 	# print facts
 	# print rules

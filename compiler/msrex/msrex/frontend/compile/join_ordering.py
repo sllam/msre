@@ -88,13 +88,14 @@ class CheckGuard(MatchTask):
 		return "CheckGuard %s" % (self.guard)
 
 class FilterGuard(MatchTask):
-	def __init__(self, term_vars, compre_dom, head_idx, guards):
+	def __init__(self, term_vars, compre_dom, head_idx, guards, init_binders=False):
 		self.initialize()
 		self.term_vars  = term_vars
 		# print "HG HG: %s" % term_vars
 		self.compre_dom = compre_dom
 		self.head_idx = head_idx
 		self.guards = guards
+		self.init_binders=init_binders
 	def __repr__(self):
 		return "FilterGuard %s %s" % (head_idx_str(self.head_idx), ','.join(map(lambda g: "%s" % g,self.guards)) )
 
@@ -264,6 +265,7 @@ class JoinOrdering:
 
 		self.rule_head_vars    = rule.rule_head_vars
 		self.rule_head_binders = rule.rule_head_binders
+		self.rule_all_vars     = rule.all_vars
 
 		occ_head = rule.occ_heads[occ_idx]
 		atom_partner_heads   = {}
@@ -390,7 +392,7 @@ class JoinOrdering:
 			boot_match_tasks  = [lookup_task] + collision_guard_task(False, head_idx, collision_map[occ_head.collision_idx]) 
 			# boot_match_tasks += map(lambda g: FilterGuard(lookup_task.term_vars, lookup_task.compre_dom, head_idx, g), compre_guards)
 			if len(compre_guards) > 0:
-				boot_match_tasks += [FilterGuard(lookup_task.term_vars, lookup_task.compre_dom, head_idx, compre_guards)]
+				boot_match_tasks += [FilterGuard(lookup_task.term_vars, lookup_task.compre_dom, head_idx, compre_guards, init_binders=False)]
 			boot_match_tasks += [CompreDomain(occ_head, head_idx, init_binders=False)]
 			boot_match_tasks += map(lambda g: CheckGuard(g), lctxt.scheduleGuards())
 			head_match_tasks[ head_idx ] = boot_match_tasks
@@ -435,7 +437,7 @@ class JoinOrdering:
 			# partner_match_tasks += map(lambda g: FilterGuard(lookup_task.term_vars, lookup_task.compre_dom, head_idx, g)
                         #                           ,compre_guards)
 			if len(compre_guards) > 0:
-				partner_match_tasks += [FilterGuard(lookup_task.term_vars, lookup_task.compre_dom, head_idx, compre_guards)]
+				partner_match_tasks += [FilterGuard(lookup_task.term_vars, lookup_task.compre_dom, head_idx, compre_guards, init_binders=True)]
 			partner_match_tasks += [CompreDomain(partner_head, head_idx, init_binders=True)] 
 			partner_match_tasks += map(lambda g: CheckGuard(g), lctxt.scheduleGuards())
 			head_match_tasks[ head_idx ] = partner_match_tasks	

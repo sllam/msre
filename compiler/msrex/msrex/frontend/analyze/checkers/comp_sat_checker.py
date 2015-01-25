@@ -39,9 +39,9 @@ from msrex.frontend.analyze.checkers.base_checker import Checker
 
 class CompSatChecker(Checker):
 
-	def __init__(self, decs, source_text):
+	def __init__(self, decs, source_text, builtin_preds=[]):
 		self.inspect = Inspector()
-		self.initialize(decs, source_text)
+		self.initialize(decs, source_text, builtin_preds=builtin_preds)
 
 	# Main checking routine does nothing for now
 	def check(self):

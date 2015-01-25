@@ -193,56 +193,60 @@ class Inspector:
 	# Filtering from Decs
 
 	@visit.on('dec')
-	def filter_decs(self, dec, ensem=False, extern=False, execute=False, fact=False, rule=False, assign=False, init=False, exist=False, loc_facts=False, pragmas=False):
+	def filter_decs(self, dec, ensem=False, extern=False, execute=False, fact=False, rule=False, assign=False, init=False, exist=False, loc_facts=False, pragmas=False, export=False):
 		pass
 
 	@visit.when(list)
-	def filter_decs(self, dec, ensem=False, extern=False, execute=False, fact=False, rule=False, assign=False, init=False, exist=False, loc_facts=False, pragmas=False):
+	def filter_decs(self, dec, ensem=False, extern=False, execute=False, fact=False, rule=False, assign=False, init=False, exist=False, loc_facts=False, pragmas=False, export=False):
 		decs = []
 		for d in dec:
 			decs += self.filter_decs(d, ensem=ensem, extern=extern, execute=execute, fact=fact, rule=rule, assign=assign, init=init
-                                                ,exist=exist, loc_facts=loc_facts, pragmas=pragmas)
+                                                ,exist=exist, loc_facts=loc_facts, pragmas=pragmas, export=export)
 		return decs
 
 	@visit.when(ast.PragmaDec)
-	def filter_decs(self, dec, ensem=False, extern=False, execute=False, fact=False, rule=False, assign=False, init=False, exist=False, loc_facts=False, pragmas=False):
+	def filter_decs(self, dec, ensem=False, extern=False, execute=False, fact=False, rule=False, assign=False, init=False, exist=False, loc_facts=False, pragmas=False, export=False):
 		return [dec] if pragmas else []
 
 	@visit.when(ast.EnsemDec)
-	def filter_decs(self, dec, ensem=False, extern=False, execute=False, fact=False, rule=False, assign=False, init=False, exist=False, loc_facts=False, pragmas=False):
+	def filter_decs(self, dec, ensem=False, extern=False, execute=False, fact=False, rule=False, assign=False, init=False, exist=False, loc_facts=False, pragmas=False, export=False):
 		return [dec] if ensem else []
 
 	@visit.when(ast.ExternDec)
-	def filter_decs(self, dec, ensem=False, extern=False, execute=False, fact=False, rule=False, assign=False, init=False, exist=False, loc_facts=False, pragmas=False):
+	def filter_decs(self, dec, ensem=False, extern=False, execute=False, fact=False, rule=False, assign=False, init=False, exist=False, loc_facts=False, pragmas=False, export=False):
 		return [dec] if extern else []
 
 	@visit.when(ast.ExecDec)
-	def filter_decs(self, dec, ensem=False, extern=False, execute=False, fact=False, rule=False, assign=False, init=False, exist=False, loc_facts=False, pragmas=False):
+	def filter_decs(self, dec, ensem=False, extern=False, execute=False, fact=False, rule=False, assign=False, init=False, exist=False, loc_facts=False, pragmas=False, export=False):
 		return [dec] if execute else []
 
 	@visit.when(ast.ExistDec)
-	def filter_decs(self, dec, ensem=False, extern=False, execute=False, fact=False, rule=False, assign=False, init=False, exist=False, loc_facts=False, pragmas=False):
+	def filter_decs(self, dec, ensem=False, extern=False, execute=False, fact=False, rule=False, assign=False, init=False, exist=False, loc_facts=False, pragmas=False, export=False):
 		return [dec] if exist else []
 
 	@visit.when(ast.LocFactDec)
-	def filter_decs(self, dec, ensem=False, extern=False, execute=False, fact=False, rule=False, assign=False, init=False, exist=False, loc_facts=False, pragmas=False):
+	def filter_decs(self, dec, ensem=False, extern=False, execute=False, fact=False, rule=False, assign=False, init=False, exist=False, loc_facts=False, pragmas=False, export=False):
 		return [dec] if loc_facts else []
 
 	@visit.when(ast.FactDec)
-	def filter_decs(self, dec, ensem=False, extern=False, execute=False, fact=False, rule=False, assign=False, init=False, exist=False, loc_facts=False, pragmas=False):
+	def filter_decs(self, dec, ensem=False, extern=False, execute=False, fact=False, rule=False, assign=False, init=False, exist=False, loc_facts=False, pragmas=False, export=False):
 		return [dec] if fact else []
 
 	@visit.when(ast.RuleDec)
-	def filter_decs(self, dec, ensem=False, extern=False, execute=False, fact=False, rule=False, assign=False, init=False, exist=False, loc_facts=False, pragmas=False):
+	def filter_decs(self, dec, ensem=False, extern=False, execute=False, fact=False, rule=False, assign=False, init=False, exist=False, loc_facts=False, pragmas=False, export=False):
 		return [dec] if rule else []
 
 	@visit.when(ast.AssignDec)
-	def filter_decs(self, dec, ensem=False, extern=False, execute=False, fact=False, rule=False, assign=False, init=False, exist=False, loc_facts=False, pragmas=False):
+	def filter_decs(self, dec, ensem=False, extern=False, execute=False, fact=False, rule=False, assign=False, init=False, exist=False, loc_facts=False, pragmas=False, export=False):
 		return [dec] if assign else []
 
 	@visit.when(ast.InitDec)
-	def filter_decs(self, dec, ensem=False, extern=False, execute=False, fact=False, rule=False, assign=False, init=False, exist=False, loc_facts=False, pragmas=False):
+	def filter_decs(self, dec, ensem=False, extern=False, execute=False, fact=False, rule=False, assign=False, init=False, exist=False, loc_facts=False, pragmas=False, export=False):
 		return [dec] if init else []
+
+	@visit.when(ast.ExportDec)
+	def filter_decs(self, dec, ensem=False, extern=False, execute=False, fact=False, rule=False, assign=False, init=False, exist=False, loc_facts=False, pragmas=False, export=False):
+		return [dec] if export else []
 
 	# Filtering Facts from FactLoc
 
@@ -434,10 +438,13 @@ class Inspector:
 		binders    = self.free_vars( comp_term_vars )
 		scope_vars = self.free_vars( ast_node.term ) + self.free_vars( ast_node.guards ) + self.free_vars( comp_term_ranges )
 
-		this_free_vars = []
-		for scope_var in scope_vars:
-			if not contains_var(scope_var, binders):
-				this_free_vars.append( scope_var )
+		if not compre_binders:
+			this_free_vars = []
+			for scope_var in scope_vars:
+				if not contains_var(scope_var, binders):
+					this_free_vars.append( scope_var )
+		else:
+			this_free_vars = scope_vars + binders
 		return this_free_vars
 
 	@visit.when(ast.TermBinOp)
@@ -456,9 +463,32 @@ class Inspector:
 	def free_vars(self, ast_node, loc=True, args=True, compre_binders=False):
 		return []
 
+	@visit.when(ast.AssignDec)
+	def free_vars(self, ast_node, loc=True, args=True, compre_binders=False):
+		pat_vars = self.free_vars(ast_node.term_pat)
+		exp_vars = self.free_vars(ast_node.builtin_exp, compre_binders=compre_binders)
+
+		if not compre_binders:
+			return exp_vars
+		else:
+			return pat_vars + exp_vars
+
 	def free_var_idxs(self, ast_node, loc=True, args=True, compre_binders=False):
 		free_vars = self.free_vars(ast_node, loc=loc, args=args, compre_binders=compre_binders)
 		return set(map(lambda fv: fv.rule_idx, free_vars))
+
+	def set_vars(self, vs):
+		vs_dict = {}
+		for v in vs:
+			if v.name not in vs_dict:
+				vs_dict[v.name] = v
+		return vs_dict.values()
+
+	def get_all_free_vars(self, ast_node):
+		pat_vars = self.set_vars( self.free_vars(ast_node, loc=True, args=True, compre_binders=False) )
+		binders  = self.set_vars( self.free_vars(ast_node, loc=False, args=False, compre_binders=True) )
+		all_vars = self.set_vars( self.free_vars(ast_node, loc=True, args=True, compre_binders=True) )
+		return pat_vars,binders,all_vars
 
 	# Pretty Printer
 

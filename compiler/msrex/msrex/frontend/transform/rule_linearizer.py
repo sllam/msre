@@ -87,6 +87,7 @@ class RuleLinearizer(Transformer):
 		tterms = []
 		tgrds  = []		
 		for term in fact.terms:
+			print term
 			(tterm,cons) = self.int_transform_term(term, is_lhs=is_lhs)
 			tterms.append( tterm )
 			tgrds += cons
@@ -113,7 +114,8 @@ class RuleLinearizer(Transformer):
 	def int_transform_fact(self, fact, is_lhs=True):
 		f_grds = []
 		for f in fact.facts:
-			f_grds += self.int_transform_fact( f, is_lhs=is_lhs )
+			if is_lhs:
+				f_grds += self.int_transform_fact( f, is_lhs=is_lhs )
 		fact.guards += f_grds
 		return []
 
@@ -192,6 +194,10 @@ class RuleLinearizer(Transformer):
 		return self.mk_eq_cons(term, is_lhs=is_lhs)
 
 	@visit.when( ast.TermUnderscore )
+	def int_transform_term(self, term, is_lhs=True):
+		return (term,[])
+
+	@visit.when( ast.TermCons )
 	def int_transform_term(self, term, is_lhs=True):
 		return (term,[])
 

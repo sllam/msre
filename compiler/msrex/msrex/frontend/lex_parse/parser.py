@@ -82,21 +82,30 @@ def p_declaration_scope(p):
 def p_declaration_extern(p):
 	'''
 	declaration : EXTERN mod_name_top extern_list
+                    | MODULE mod_name_top IMPORT extern_list
 	'''
-	p[0] = ExternDec(p[2],p[3],parse_frag=p)
+	if len(p) == 4:
+		p[0] = ExternDec(p[2],p[3],parse_frag=p)
+	else:
+		p[0] = ExternDec(p[2],p[4],parse_frag=p)
 
 def p_mod_name_top(p):
 	'''
 	mod_name_top : DQUOTE mod_name DQUOTE
                      | TLPAREN mod_name TRPAREN
+                     | mod_name
 	'''
-	p[0] = p[1] + p[2] + p[3]
+	if len(p) == 4:
+		p[0] = p[1] + p[2] + p[3]
+	else:
+		p[0] = p[1]
 
 def p_mod_name(p):
 	'''
 	mod_name : NAME DIV mod_name
-                 | NAME STOP NAME
+                 | NAME STOP mod_name
                  | NAME
+		 | VARIABLE
 	'''
 	if len(p) == 4:
 		p[0] = p[1] + p[2] + p[3]
@@ -123,6 +132,16 @@ def p_extern_elems(p):
 	else:
 		p[0] = [p[1]]
 
+def p_extern_elems_alt(p):
+	'''
+	extern_elems : extern_elem STOP extern_elems
+                     | extern_elem STOP
+	'''
+	if len(p) == 4:
+		p[0] = [p[1]] + p[3]
+	else:
+		p[0] = [p[1]]
+
 def p_extern_elem(p):
 	'''
 	extern_elem : NAME COLON COLON type 
@@ -130,26 +149,57 @@ def p_extern_elem(p):
 	p[0] = ExternTypeSig( p[1], p[4], parse_frag=p)
 	# p[0] = (p[1],p[4])
 
-# Type Declarations
-
+# Predicate Declarations
 
 def p_declaration_fact(p):
 	'''
-	declaration : PRED NAME COLON COLON FACT STOP
-                    | PRED NAME COLON COLON type ARROW FACT STOP
-                    | PRED typemodifiers NAME COLON COLON FACT STOP
-	            | PRED typemodifiers NAME COLON COLON type ARROW FACT STOP
+	declaration : PRED NAME COLON COLON fact_sort STOP
+                    | PRED NAME COLON COLON type ARROW fact_sort STOP
 	'''
 	# print p.linespan(0)
 	# print p.lexspan(0)
 	if len(p) == 7:
-		p[0] = FactDec([],p[2],None,parse_frag=p)
-	elif len(p) == 9:
-		p[0] = FactDec([],p[2],p[5],parse_frag=p)
-	elif len(p) == 8:
-		p[0] = FactDec(p[2],p[3],None,parse_frag=p)
+		p[0] = FactDec([],p[2],None,fact_role=p[5],parse_frag=p)
 	else:
-		p[0] = FactDec(p[2],p[3],p[6],parse_frag=p)
+		p[0] = FactDec([],p[2],p[5],fact_role=p[7],parse_frag=p)
+
+
+def p_declaration_fact_with_modifiers(p):
+	'''
+        declaration : PRED NAME COLON COLON fact_sort WHERE typemodifiers STOP
+	            | PRED NAME COLON COLON type ARROW fact_sort WHERE typemodifiers STOP
+	'''
+
+	if len(p) == 9:
+		p[0] = FactDec(p[7],p[2],None,fact_role=p[5],parse_frag=p)
+	else:
+		p[0] = FactDec(p[9],p[2],p[5],fact_role=p[7],parse_frag=p)
+
+def p_match_fact_sort(p):
+	'''
+	fact_sort : FACT
+	'''
+	p[0] = MATCH_FACT
+
+def p_trigger_fact_sort(p):
+	'''
+	fact_sort : TRIGGER
+	'''
+	p[0] = TRIGGER_FACT
+
+def p_actuator_fact_sort(p):
+	'''
+	fact_sort : ACTUATOR
+	'''
+	p[0] = ACTUATOR_FACT
+
+# Export Declarations
+
+def p_export_query(p):
+	'''
+	declaration : EXPORT QUERY fact STOP
+	'''
+	p[0] = ExportDec(QUERY_EXPORT,p[3],parse_frag=p)
 
 # Location Declarations
 
@@ -164,6 +214,12 @@ def p_declaration_exist(p):
 	declaration : EXISTS var_list STOP
 	'''
 	p[0] = ExistDec(p[2],parse_frag=p)
+
+def p_declaration_forall(p):
+	'''
+	declaration : FORALL var_list STOP
+	'''
+	p[0] = ForallDec(p[2],parse_frag=p)
 
 def p_declaration_loc_facts(p):
 	'''
@@ -392,6 +448,7 @@ def p_comp_ranges(p):
 def p_comp_range(p):
 	'''
 	comp_range : term UNIDIS term
+                   | term ARROW term
 	'''
 	p[0] = CompRange(p[1],p[3],parse_frag=p)
 
@@ -496,7 +553,9 @@ def p_term_binop(p):
 	p[0] = p[1]
 
 def p_term_unary_op(p):
-	'term_unaryop : NOT'
+	'''
+	term_unaryop : MINUS
+	'''
 	p[0] = p[1]
 
 def p_simp_term_tuple(p):
@@ -599,13 +658,19 @@ def p_externtype(p):
 
 def p_typemodifiers(p):
 	"""
-	typemodifiers : NAME
-	              | typemodifiers NAME
+	typemodifiers : typemodifier
+	              | typemodifiers COMMA typemodifier
 	"""	
 	if len(p) == 2:
 		p[0] = [p[1]]
 	else:
-		p[0] = p[1] + [p[2]]
+		p[0] = p[1] + [p[3]]
+
+def p_typemodifier(p):
+	'''
+	typemodifier : NAME
+	'''
+	p[0] = FactMod(p[1],[],parse_frag=p)
 
 '''
 def p_facttype(p):

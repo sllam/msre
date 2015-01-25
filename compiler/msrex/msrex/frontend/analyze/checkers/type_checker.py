@@ -26,6 +26,8 @@ Foundation). The statements made herein are solely the responsibility of the aut
 '''
 
 import msrex.frontend.lex_parse.ast as ast
+import msrex.frontend.lex_parse.constants as constants
+
 import msrex.misc.visit as visit
 import msrex.misc.terminal_color as terminal
 
@@ -73,7 +75,12 @@ def smt_base_type(name):
 		return tyDest
 
 def new_ctxt():
-	return { 'vars':{}, 'cons':{}, 'pred':{}, 'rule':{}, 'type_vars':{}, 'ensem':{} }
+	return { 'vars' : {}
+               , 'cons' : { 'true':tyBool, 'false':tyBool } 
+               , 'pred' : {}
+               , 'rule' : {}
+               , 'type_vars' : {}
+               , 'ensem' : {} }
 
 def copy_ctxt(ctxt):
 	n_ctxt = new_ctxt()
@@ -85,9 +92,9 @@ def copy_ctxt(ctxt):
 
 class TypeChecker(Checker):
 
-	def __init__(self, decs, source_text):
+	def __init__(self, decs, source_text, builtin_preds=[]):
 		self.inspect = Inspector()
-		self.initialize(decs, source_text)	
+		self.initialize(decs, source_text, builtin_preds=builtin_preds)	
 		self.solver = Solver()
 		self.infer_goals = {}
 
@@ -114,12 +121,20 @@ class TypeChecker(Checker):
 			s0 = s0 and s
 			extern_cons += cons
 		fact_dec_cons = []
-		for fact_dec in inspect.filter_decs(ast_node.decs, fact=True):
+		for fact_dec in inspect.filter_decs(ast_node.decs, fact=True) + self.get_builtin_fact_decs():
 			(s,cons) = self.int_check_dec(fact_dec, ctxt)
 			s0 = s0 and s
 			fact_dec_cons += cons
-		rule_dec_cons = []
+		export_dec_cons = []
 		this_s = True
+		for export_dec in inspect.filter_decs(ast_node.decs, export=True):
+			(s,cons) = self.int_check_dec(export_dec, ctxt)
+			s0 = s0 and s
+			if self.check_type_sat( cons + fact_dec_cons ):			
+				export_dec_cons += cons
+			else:
+				this_s = False
+		rule_dec_cons = []
 		for rule_dec in inspect.filter_decs(ast_node.decs, rule=True):
 			(s,cons) = self.int_check_dec(rule_dec, ctxt)
 			s0 = s0 and s
@@ -128,7 +143,7 @@ class TypeChecker(Checker):
 			else:
 				this_s = False
 		ctxt['ensem'][ast_node.name] = { 'succ':s0 and this_s, 'cons':extern_cons + fact_dec_cons }
-		return (s0 and this_s, extern_cons + fact_dec_cons + rule_dec_cons)
+		return (s0 and this_s, extern_cons + fact_dec_cons + export_dec_cons + rule_dec_cons)
 
 	@visit.when( ast.ExternDec )
 	def int_check_dec(self, ast_node, ctxt):
@@ -153,6 +168,12 @@ class TypeChecker(Checker):
 			(s,tvar2,cons) = self.int_check_type(ast_node.type, local_ctxt)
 			return (s,[tvar1 |Eq| tvar2 |just| [ast_node]] + cons)
 
+	@visit.when( ast.ExportDec )
+	def int_check_dec(self, ast_node, ctxt):
+		local_ctxt  = copy_ctxt(ctxt)
+		if ast_node.export_sort == ast.QUERY_EXPORT:
+			return self.int_check_fact(ast_node.arg, local_ctxt)
+			
 	@visit.when( ast.RuleDec )
 	def int_check_dec(self, ast_node, ctxt):
 		local_ctxt = copy_ctxt(ctxt)
@@ -428,7 +449,8 @@ class TypeChecker(Checker):
 		(s0,t0,cs0) = self.int_check_term(ast_node.term, ctxt)
 		t1 = tyVar()
 		self.mark_for_infer(ast_node, t1)
-		return (s0, t1, [t1 |Eq| tyBool |just| [ast_node], t0 |Eq| tyBool |just| [ast_node]] + cs0)
+		# return (s0, t1, [t1 |Eq| tyBool |just| [ast_node], t0 |Eq| tyBool |just| [ast_node]] + cs0)
+		return (s0, t1, [t1 |Eq| t0 |just| [ast_node]] + cs0)
 
 	@visit.when( ast.TermUnderscore )
 	def int_check_term(self, ast_node, ctxt):

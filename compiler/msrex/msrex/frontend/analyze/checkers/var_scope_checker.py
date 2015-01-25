@@ -27,6 +27,7 @@ Foundation). The statements made herein are solely the responsibility of the aut
 
 
 import msrex.frontend.lex_parse.ast as ast
+import msrex.frontend.lex_parse.constants as constants
 import msrex.misc.visit as visit
 import msrex.misc.terminal_color as terminal
 from msrex.frontend.analyze.inspectors import Inspector
@@ -35,9 +36,9 @@ from msrex.frontend.analyze.checkers.base_checker import Checker
 
 class VarScopeChecker(Checker):
 
-	def __init__(self, decs, source_text):
+	def __init__(self, decs, source_text, builtin_preds=[]):
 		self.inspect = Inspector()
-		self.initialize(decs, source_text)
+		self.initialize(decs, source_text, builtin_preds=builtin_preds)
 		self.curr_out_scopes = new_ctxt()
 		self.curr_duplicates = { 'vars':{} }
 		self.ensems = {}
@@ -78,7 +79,7 @@ class VarScopeChecker(Checker):
 			self.check_scope(extern, ctxt)
 
 		# Check scoping of predicate declarations
-		for dec in inspect.filter_decs(decs, fact=True):
+		for dec in inspect.filter_decs(decs, fact=True) + self.get_builtin_fact_decs():
 			local_ctxt = self.check_scope(dec, ctxt)
 			for pred in local_ctxt['preds']:
 				if pred.name in dec_preds:
@@ -88,6 +89,10 @@ class VarScopeChecker(Checker):
 			extend_ctxt(ctxt, local_ctxt)
 
 		self.compose_duplicate_error_reports("predicate", dec_preds)
+
+		# Check scoping of export declarations
+		for dec in inspect.filter_decs(decs, export=True):
+			self.check_scope(dec, ctxt)
 
 		# Check scoping of rule declarations
 		for dec in inspect.filter_decs(decs, rule=True):
@@ -149,6 +154,12 @@ class VarScopeChecker(Checker):
 		ctxt['preds'].append( ast_node )
 		# TODO: check types
 		return ctxt
+
+	@visit.when(ast.ExportDec)
+	def check_scope(self, ast_node, ctxt, lhs=False):
+		ctxt = copy_ctxt(ctxt)
+		if ast_node.export_sort == ast.QUERY_EXPORT:
+			self.check_scope(ast_node.arg, ctxt)
 
 	@visit.when(ast.RuleDec)
 	def check_scope(self, ast_node, ctxt, lhs=False):
@@ -378,6 +389,8 @@ class VarScopeChecker(Checker):
 
 	def check_cons(self, ctxt, cons):
 		if not lookup_cons(ctxt, cons):
+			if cons.name in constants.BUILTIN_CONSTANTS:
+				return True
 			self.curr_out_scopes['cons'].append( cons )
 			return False
 		else:

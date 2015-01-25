@@ -37,17 +37,21 @@ class Checker:
 
 	# Front End Interfaces
 
-	def __init__(self, decs, source_text, default_highlight=terminal.T_RED_BACK):
-		self.initialize(decs, source_text, default_highlight=default_highlight)
+	def __init__(self, decs, source_text, default_highlight=terminal.T_RED_BACK, builtin_preds=[]):
+		self.initialize(decs, source_text, default_highlight=default_highlight, builtin_preds=builtin_preds)
 
-	def initialize(self, decs, source_text, default_highlight=terminal.T_RED_BACK):
+	def initialize(self, decs, source_text, default_highlight=terminal.T_RED_BACK, builtin_preds=[]):
 		self.errors   = {}
 		self.decs     = decs
 		self.source_text = source_text
 		self.default_highlight = default_highlight
+		self.builtin_preds = builtin_preds
 
 		# idx = self.declare_error("Test Error")
 		
+	def get_builtin_fact_decs(self):
+		return map(lambda bp: bp.getFactDec(), self.builtin_preds)
+
 	def get_next_error_idx(self):
 		global ERROR_IDX
 		new_idx = ERROR_IDX
@@ -142,6 +146,12 @@ class Checker:
 	@visit.when(ast.FactDec)
 	def build_display_regions(self, ast_node):
 		error_idxs = ast_node.error_idxs + self.build_display_regions(ast_node.type)
+		self.extend_display_regions(error_idxs,[(ast_node.lex_start,ast_node.lex_end)])
+		return error_idxs
+
+	@visit.when(ast.ExportDec)
+	def build_display_regions(self, ast_node):
+		error_idxs = ast_node.error_idxs + self.build_display_regions(ast_node.arg)
 		self.extend_display_regions(error_idxs,[(ast_node.lex_start,ast_node.lex_end)])
 		return error_idxs
 
