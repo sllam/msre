@@ -55,7 +55,8 @@ class FramedCtxt:
 			return self.add_index( key )
 
 	def add_index(self, key):
-		curr_frame = self.fctxt[0]
+		# curr_frame = self.fctxt[0]
+		curr_frame = self.fctxt[len(self.fctxt)-1]
 		new_idx = self.new_index()
 		curr_frame[key] = new_idx
 		return new_idx

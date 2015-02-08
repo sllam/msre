@@ -45,8 +45,8 @@ class ProgCompilation:
 		for rule in rules:
 			rule_compilations.append( RuleCompilation(rule, fact_dir, self.lookup_tables) )
 		self.rule_compilations = rule_compilations
-		self.lookup_tables.padWithExportedLookup()
 		self.lookup_tables.padWithLinearLookup()
+		self.lookup_tables.padWithExportedLookup()
 		self.rules = rules
 		self.fact_dir = fact_dir
 

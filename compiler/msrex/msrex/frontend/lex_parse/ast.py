@@ -525,8 +525,8 @@ class TermVar(ASTNode):
 		self.reg_source_info(parse_frag)
 	def __str__(self):
 		if hasattr(self,'rule_idx'):
-			# return "%s(%s::%s)" % (TERM_VAR,self.name,self.rule_idx)
-			return '%s' % (self.name)
+			return "(%s::%s)" % (self.name,self.rule_idx)
+			# return '%s' % (self.name)
 			# return "%s" % self.name
 		else:
 			return "%s(%s)" % (TERM_VAR,self.name)
