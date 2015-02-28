@@ -118,8 +118,12 @@ class LookupAll(MatchTask):
 	def __init__(self, head, head_idx, lookup, var_gen):
 		self.initialize()
 		inspect = Inspector()
-		self.term_vars  = inspect.free_vars(head.fact.comp_ranges[0].term_vars)
-		self.compre_dom = head.fact.comp_ranges[0].term_range
+		if len(head.fact.comp_ranges) > 0:
+			self.term_vars  = inspect.free_vars(head.fact.comp_ranges[0].term_vars)
+			self.compre_dom = head.fact.comp_ranges[0].term_range
+		else:
+			self.term_vars = []
+			self.compre_dom = None
 		self.lookup = lookup
 		self.input_vars  = lookup.inputVars(head)
 		# output_vars,dep_grds = lookup.outputVarsModuloDependencies(head, var_gen)
@@ -139,7 +143,8 @@ class CompreDomain(MatchTask):
 		inspect = Inspector()
 		self.head = head
 		self.head_idx = head_idx
-		self.term_vars  = inspect.free_vars(head.fact.comp_ranges[0].term_vars)
+		# self.term_vars  = inspect.free_vars(head.fact.comp_ranges[0].term_vars)
+		self.term_vars  = inspect.unfold_term_seq(head.fact.comp_ranges[0].term_vars)
 		self.compre_dom = head.fact.comp_ranges[0].term_range
 		self.init_binders = init_binders
 	def __repr__(self):
@@ -393,7 +398,9 @@ class JoinOrdering:
 			# boot_match_tasks += map(lambda g: FilterGuard(lookup_task.term_vars, lookup_task.compre_dom, head_idx, g), compre_guards)
 			if len(compre_guards) > 0:
 				boot_match_tasks += [FilterGuard(lookup_task.term_vars, lookup_task.compre_dom, head_idx, compre_guards, init_binders=False)]
-			boot_match_tasks += [CompreDomain(occ_head, head_idx, init_binders=False)]
+			if len(occ_head.fact.comp_ranges) > 0:
+				boot_match_tasks += [CompreDomain(occ_head, head_idx, init_binders=False)]
+
 			boot_match_tasks += map(lambda g: CheckGuard(g), lctxt.scheduleGuards())
 			head_match_tasks[ head_idx ] = boot_match_tasks
 
@@ -422,7 +429,10 @@ class JoinOrdering:
 
 			# Update lookup context
 			# lctxt.addFactHead( partner_head )
-			lctxt.addVars( lookup_task.output_vars + [partner_head.compre_dom] )
+			if partner_head.compre_dom != None:
+				lctxt.addVars( lookup_task.output_vars + [partner_head.compre_dom] )
+			else:
+				lctxt.addVars( lookup_task.output_vars )
 			# map(lambda g: lctxt.addGuard(g), lookup_task.dep_grds)
 			# lctxt.addVars( best_lookup.outputVars( partner_head ) + [partner_head.compre_dom] )
 			lctxt.remove_guards( best_lookup.assoc_guards )
@@ -438,7 +448,9 @@ class JoinOrdering:
                         #                           ,compre_guards)
 			if len(compre_guards) > 0:
 				partner_match_tasks += [FilterGuard(lookup_task.term_vars, lookup_task.compre_dom, head_idx, compre_guards, init_binders=True)]
-			partner_match_tasks += [CompreDomain(partner_head, head_idx, init_binders=True)] 
+			if len(partner_head.fact.comp_ranges) > 0:
+				partner_match_tasks += [CompreDomain(partner_head, head_idx, init_binders=True)] 
+
 			partner_match_tasks += map(lambda g: CheckGuard(g), lctxt.scheduleGuards())
 			head_match_tasks[ head_idx ] = partner_match_tasks	
 

@@ -117,7 +117,7 @@ class Rule:
 		self.where_all_vars = where_all_vars
 
 		self.all_vars = inspect.set_vars( inspect.free_vars(rule_dec.slhs+rule_dec.plhs+rule_dec.rhs+rule_dec.where
-                                                                   ,loc=True, args=True, compre_binders=True) )
+                                                                   ,loc=True, args=True, compre_binders=True, uscores=True) )
 
 		for head in rule_dec.slhs:
 			self.has_simplify = True

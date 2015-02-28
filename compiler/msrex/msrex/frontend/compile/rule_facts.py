@@ -167,7 +167,10 @@ class FactCompreHead(Fact):
 					self.non_idx_grds.append( rulegrd )
 			else:
 				self.non_idx_grds.append( rulegrd )
-		self.compre_dom = fact_compre.comp_ranges[0].term_range
+		if len(fact_compre.comp_ranges) > 0:
+			self.compre_dom = fact_compre.comp_ranges[0].term_range
+		else:
+			self.compre_dom = None
 	def __repr__(self):
 		if len( self.eq_grds + self.mem_grds + self.ord_grds ) > 0:
 			idxgrdstr = "\nIndexible Guards :-\n" + '\n'.join(map(lambda g:g.__repr__(), self.eq_grds + self.mem_grds + self.ord_grds))

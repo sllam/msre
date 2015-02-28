@@ -335,48 +335,49 @@ class Inspector:
 	# Free Variables
 
 	@visit.on('ast_node')
-	def free_vars(self, ast_node, loc=True, args=True, compre_binders=False):
+	def free_vars(self, ast_node, loc=True, args=True, compre_binders=False, uscores=False):
 		pass
 
 	@visit.when(list)
-	def free_vars(self, ast_node, loc=True, args=True, compre_binders=False):
+	def free_vars(self, ast_node, loc=True, args=True, compre_binders=False, uscores=False):
 		this_free_vars = []
 		for obj in ast_node:
-			this_free_vars += self.free_vars( obj, loc=loc, args=args, compre_binders=compre_binders )
+			this_free_vars += self.free_vars( obj, loc=loc, args=args, compre_binders=compre_binders, uscores=uscores )
 		return this_free_vars
 
 	@visit.when(ast.FactBase)
-	def free_vars(self, ast_node, loc=True, args=True, compre_binders=False):
-		return self.free_vars(ast_node.terms, loc=loc, args=args, compre_binders=compre_binders)
+	def free_vars(self, ast_node, loc=True, args=True, compre_binders=False, uscores=False):
+		return self.free_vars(ast_node.terms, loc=loc, args=args, compre_binders=compre_binders, uscores=uscores)
 
 	@visit.when(ast.FactLoc)
-	def free_vars(self, ast_node, loc=True, args=True, compre_binders=False):
+	def free_vars(self, ast_node, loc=True, args=True, compre_binders=False, uscores=False):
 		fvs = []
 		if loc:
-			fvs += self.free_vars(ast_node.loc, loc=loc, args=args, compre_binders=compre_binders)
+			fvs += self.free_vars(ast_node.loc, loc=loc, args=args, compre_binders=compre_binders, uscores=uscores)
 		if args:
-			fvs += self.free_vars(ast_node.fact, loc=loc, args=args, compre_binders=compre_binders)
+			fvs += self.free_vars(ast_node.fact, loc=loc, args=args, compre_binders=compre_binders, uscores=uscores)
 		return fvs
 
 	@visit.when(ast.FactLocCluster)
-	def free_vars(self, ast_node, loc=True, args=True, compre_binders=False):
+	def free_vars(self, ast_node, loc=True, args=True, compre_binders=False, uscores=False):
 		fvs = []
 		if loc:
-			fvs += self.free_vars(ast_node.loc, loc=loc, args=args, compre_binders=compre_binders)
+			fvs += self.free_vars(ast_node.loc, loc=loc, args=args, compre_binders=compre_binders, uscores=uscores)
 		if args:
-			fvs += self.free_vars(ast_node.facts, loc=loc, args=args, compre_binders=compre_binders)
+			fvs += self.free_vars(ast_node.facts, loc=loc, args=args, compre_binders=compre_binders, uscores=uscores)
 		return fvs
 
 	@visit.when(ast.FactCompre)
-	def free_vars(self, ast_node, loc=True, args=True, compre_binders=False):
+	def free_vars(self, ast_node, loc=True, args=True, compre_binders=False, uscores=False):
 		comp_term_vars   = map(lambda comp_range: comp_range.term_vars, ast_node.comp_ranges)
 		comp_term_ranges = map(lambda comp_range: comp_range.term_range, ast_node.comp_ranges)	
 
 		binders    = self.free_vars( comp_term_vars )
-		scope_vars = self.free_vars( ast_node.facts, loc=loc, args=args, compre_binders=compre_binders ) 
+		scope_vars = self.free_vars( ast_node.facts, loc=loc, args=args, compre_binders=compre_binders, uscores=uscores ) 
 
 		if args:
-			scope_vars += self.free_vars( ast_node.guards, compre_binders=compre_binders ) + self.free_vars( comp_term_ranges, compre_binders=compre_binders )
+			scope_vars += self.free_vars( ast_node.guards, compre_binders=compre_binders, uscores=uscores ) 
+			scope_vars += self.free_vars( comp_term_ranges, compre_binders=compre_binders, uscores=uscores )
 
 		if compre_binders:
 			this_free_vars = scope_vars + binders
@@ -388,50 +389,50 @@ class Inspector:
 		return this_free_vars
 
 	@visit.when(ast.TermCons)
-	def free_vars(self, ast_node, loc=True, args=True, compre_binders=False):
+	def free_vars(self, ast_node, loc=True, args=True, compre_binders=False, uscores=False):
 		return []
 
 	@visit.when(ast.TermVar)
-	def free_vars(self, ast_node, loc=True, args=True, compre_binders=False):
+	def free_vars(self, ast_node, loc=True, args=True, compre_binders=False, uscores=False):
 		return [ast_node]
 
 	@visit.when(ast.TermApp)
-	def free_vars(self, ast_node, loc=True, args=True, compre_binders=False):
-		return self.free_vars( ast_node.term1, compre_binders=compre_binders ) + self.free_vars( ast_node.term2, compre_binders=compre_binders )
+	def free_vars(self, ast_node, loc=True, args=True, compre_binders=False, uscores=False):
+		return self.free_vars( ast_node.term1, compre_binders=compre_binders, uscores=uscores ) + self.free_vars( ast_node.term2, compre_binders=compre_binders, uscores=uscores )
 
 	@visit.when(ast.TermTuple)
-	def free_vars(self, ast_node, loc=True, args=True, compre_binders=False):
+	def free_vars(self, ast_node, loc=True, args=True, compre_binders=False, uscores=False):
 		this_free_vars = []
 		for term in ast_node.terms:
-			this_free_vars += self.free_vars( term, compre_binders=compre_binders )
+			this_free_vars += self.free_vars( term, compre_binders=compre_binders, uscores=uscores )
 		return this_free_vars
 
 	@visit.when(ast.TermList)
-	def free_vars(self, ast_node, loc=True, args=True, compre_binders=False):
+	def free_vars(self, ast_node, loc=True, args=True, compre_binders=False, uscores=False):
 		this_free_vars = []
 		for term in ast_node.terms:
-			this_free_vars += self.free_vars( term, compre_binders=compre_binders )
+			this_free_vars += self.free_vars( term, compre_binders=compre_binders, uscores=uscores )
 		return this_free_vars
 
 	@visit.when(ast.TermListCons)
-	def free_vars(self, ast_node, loc=True, args=True, compre_binders=False):
-		return self.free_vars( ast_node.term1, compre_binders=compre_binders ) + self.free_vars( ast_node.term2, compre_binders=compre_binders )
+	def free_vars(self, ast_node, loc=True, args=True, compre_binders=False, uscores=False):
+		return self.free_vars( ast_node.term1, compre_binders=compre_binders, uscores=uscores ) + self.free_vars( ast_node.term2, compre_binders=compre_binders, uscores=uscores )
 
 	@visit.when(ast.TermMSet)
-	def free_vars(self, ast_node, loc=True, args=True, compre_binders=False):
+	def free_vars(self, ast_node, loc=True, args=True, compre_binders=False, uscores=False):
 		this_free_vars = []
 		for term in ast_node.terms:
-			this_free_vars += self.free_vars( term, compre_binders=compre_binders )
+			this_free_vars += self.free_vars( term, compre_binders=compre_binders, uscores=uscores )
 		return this_free_vars
 
 	@visit.when(ast.TermEnumMSet)
-	def free_vars(self, ast_node, loc=True, args=True, compre_binders=False):
-		fvs1 = self.free_vars(ast_node.texp1,loc=loc,args=args,compre_binders=compre_binders)
-		fvs2 = self.free_vars(ast_node.texp2,loc=loc,args=args,compre_binders=compre_binders)
+	def free_vars(self, ast_node, loc=True, args=True, compre_binders=False, uscores=False):
+		fvs1 = self.free_vars(ast_node.texp1,loc=loc,args=args,compre_binders=compre_binders,uscores=uscores)
+		fvs2 = self.free_vars(ast_node.texp2,loc=loc,args=args,compre_binders=compre_binders,uscores=uscores)
 		return fvs1 + fvs2
 
 	@visit.when(ast.TermCompre)
-	def free_vars(self, ast_node, loc=True, args=True, compre_binders=False):
+	def free_vars(self, ast_node, loc=True, args=True, compre_binders=False, uscores=False):
 		comp_term_vars   = map(lambda comp_range: comp_range.term_vars, ast_node.comp_ranges)
 		comp_term_ranges = map(lambda comp_range: comp_range.term_range, ast_node.comp_ranges)	
 
@@ -448,40 +449,43 @@ class Inspector:
 		return this_free_vars
 
 	@visit.when(ast.TermBinOp)
-	def free_vars(self, ast_node, loc=True, args=True, compre_binders=False):
-		return self.free_vars( ast_node.term1, compre_binders=compre_binders ) + self.free_vars( ast_node.term2, compre_binders=compre_binders )
+	def free_vars(self, ast_node, loc=True, args=True, compre_binders=False, uscores=False):
+		return self.free_vars( ast_node.term1, compre_binders=compre_binders, uscores=uscores ) + self.free_vars( ast_node.term2, compre_binders=compre_binders,uscores=uscores )
 
 	@visit.when(ast.TermUnaryOp)
-	def free_vars(self, ast_node, loc=True, args=True, compre_binders=False):
-		return self.free_vars( ast_node.term, compre_binders=compre_binders )
+	def free_vars(self, ast_node, loc=True, args=True, compre_binders=False, uscores=False):
+		return self.free_vars( ast_node.term, compre_binders=compre_binders,uscores=uscores )
 
 	@visit.when(ast.TermLit)
-	def free_vars(self, ast_node, loc=True, args=True, compre_binders=False):
+	def free_vars(self, ast_node, loc=True, args=True, compre_binders=False, uscores=False):
 		return []
 
 	@visit.when(ast.TermUnderscore)
-	def free_vars(self, ast_node, loc=True, args=True, compre_binders=False):
-		return []
+	def free_vars(self, ast_node, loc=True, args=True, compre_binders=False, uscores=False):
+		if not uscores:
+			return []
+		else:
+			return [ast_node]
 
 	@visit.when(ast.AssignDec)
-	def free_vars(self, ast_node, loc=True, args=True, compre_binders=False):
-		pat_vars = self.free_vars(ast_node.term_pat)
-		exp_vars = self.free_vars(ast_node.builtin_exp, compre_binders=compre_binders)
+	def free_vars(self, ast_node, loc=True, args=True, compre_binders=False, uscores=False):
+		pat_vars = self.free_vars(ast_node.term_pat, uscores=uscores)
+		exp_vars = self.free_vars(ast_node.builtin_exp, compre_binders=compre_binders, uscores=uscores)
 
 		if not compre_binders:
 			return exp_vars
 		else:
 			return pat_vars + exp_vars
 
-	def free_var_idxs(self, ast_node, loc=True, args=True, compre_binders=False):
-		free_vars = self.free_vars(ast_node, loc=loc, args=args, compre_binders=compre_binders)
+	def free_var_idxs(self, ast_node, loc=True, args=True, compre_binders=False, uscores=False):
+		free_vars = self.free_vars(ast_node, loc=loc, args=args, compre_binders=compre_binders, uscores=uscores)
 		return set(map(lambda fv: fv.rule_idx, free_vars))
 
 	def set_vars(self, vs):
 		vs_dict = {}
 		for v in vs:
-			if v.name not in vs_dict:
-				vs_dict[v.name] = v
+			if v.rule_idx not in vs_dict:
+				vs_dict[v.rule_idx] = v
 		return vs_dict.values()
 
 	def get_all_free_vars(self, ast_node):
@@ -855,6 +859,36 @@ class Inspector:
 			return self.flatten_term([ast_node.term1,ast_node.term2], accept_nodes=accept_nodes, expand_nodes=expand_nodes)
 		else:
 			return []
+
+	@visit.on( 'term' )
+	def unfold_term_seq(self, term):
+		pass
+
+	@visit.when( list )
+	def unfold_term_seq(self, term):
+		ts = []
+		for t in term:
+			ts = ts + self.unfold_term_seq(t)
+		return ts
+
+	@visit.when( ast.TermLit )
+	def unfold_term_seq(self, term):
+		return [term]
+
+	@visit.when( ast.TermVar )
+	def unfold_term_seq(self, term):
+		return [term]
+
+	@visit.when( ast.TermUnderscore )
+	def unfold_term_seq(self, term):
+		return [term]
+
+	@visit.when( ast.TermTuple )
+	def unfold_term_seq(self, term):
+		ts = []
+		for t in term.terms:
+			ts = ts + self.unfold_term_seq(t) 
+		return ts
 
 # Auxiliary operations
 

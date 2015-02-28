@@ -184,7 +184,8 @@ class Checker:
 	@visit.when(ast.AssignDec)
 	def build_display_regions(self, ast_node):
 		error_idxs = set_interp( self.build_display_regions( ast_node.term_pat ) + self.build_display_regions( ast_node.builtin_exp ) )
-		self.extend_display_regions(error_idxs,[(ast_node.lex_start,ast_node.lex_end)])
+		if ast_node.has_source_info:
+			self.extend_display_regions(error_idxs,[(ast_node.lex_start,ast_node.lex_end)])
 		return error_idxs
 
 	@visit.when(ast.TypeVar)

@@ -37,11 +37,14 @@ from msrex.frontend.analyze.checkers.pragma_checker import PragmaChecker
 from msrex.frontend.analyze.checkers.lhs_restrict_checker import LHSRestrictChecker
 from msrex.frontend.analyze.checkers.var_scope_checker import VarScopeChecker
 from msrex.frontend.analyze.checkers.type_checker import TypeChecker
+from msrex.frontend.analyze.checkers.neighbor_restrict_checker import NeighborRestrictChecker
 from msrex.frontend.analyze.extractors.fact_property_extractor import FactPropertyExtractor
 
 from msrex.frontend.transform.default_location import DefaultLocation
 from msrex.frontend.transform.rule_linearizer import RuleLinearizer
 from msrex.frontend.transform.alpha_indexer import AlphaIndexer
+# from msrex.frontend.transform.lhs_compre import LHSCompre
+# from msrex.frontend.transform.choreographic import Choreographic
 
 from msrex.frontend.compile.rule_facts import FactDirectory
 from msrex.frontend.compile.rules import Rule
@@ -69,10 +72,25 @@ def process_msre(file_name, source_text=None, builtin_preds=[]):
                  , 'valid'         : False }
 
 	if len(error_reports) == 0:
-		transformers = [DefaultLocation,RuleLinearizer,AlphaIndexer]
+		transformers = [DefaultLocation,RuleLinearizer,AlphaIndexer] #,LHSCompre]
 		for transformer in transformers:
 			tr = transformer( decs )
 			tr.transform()
+		error_reports, analysis, data = check_validity(decs, source_text, checkers=[NeighborRestrictChecker]
+                                                              ,builtin_preds=builtin_preds)
+		if len(error_reports) > 0:
+			output['error_reports'] += error_reports
+			return output
+
+		'''
+		choreographic_transform = Choreographic(decs, source_text)
+		if choreographic_transform.required():
+			choreographic_transform.transform()
+			nc_file_name = "%s_node_centric.cmg" % mk_prog_name( file_name )
+			nc_output_file = open(nc_file_name, 'w')
+			nc_output_file.write( choreographic_transform.getGeneratedCodes() )
+		'''
+
 		prog = process_prog( decs, mk_prog_name( file_name ), data, builtin_preds=builtin_preds, source_text=source_text)
 		output['valid'] = True
 		output['rules'] = prog.rules

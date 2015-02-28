@@ -107,6 +107,10 @@ class AlphaIndexer(Transformer):
 	@visit.when( ast.TermVar )
 	def int_transform(self, ast_node, ctxt=None):
 		ast_node.rule_idx = ctxt.get_index( ast_node.name )
+
+	@visit.when( ast.TermUnderscore )
+	def int_transform(self, ast_node, ctxt=None):
+		ast_node.rule_idx = ctxt.new_index()
 		
 	@visit.when( ast.TermApp )
 	def int_transform(self, ast_node, ctxt=None):

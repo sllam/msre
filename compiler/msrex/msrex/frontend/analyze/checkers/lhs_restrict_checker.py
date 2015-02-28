@@ -68,12 +68,16 @@ class LHSRestrictChecker(Checker):
 		pass
 
 	@visit.when(ast.FactLoc)
-	def check_int(self, ast_node):
-		pass
+	def check_int(self, ast_node):		
+		if ast_node.loc.term_type not in ast.TERM_VAR:
+			error_idx = self.declare_error("Unsupported LHS Pattern: Non-variable location.")
+			self.extend_error(error_idx, ast_node.loc)
 
 	@visit.when(ast.FactLocCluster)
 	def check_int(self, ast_node):
-		pass
+		if ast_node.loc.term_type not in ast.TERM_VAR:
+			error_idx = self.declare_error("Unsupported LHS Pattern: Non-variable location.")
+			self.extend_error(error_idx, ast_node.loc)
 
 	@visit.when(ast.FactCompre)
 	def check_int(self, ast_node):
@@ -85,12 +89,21 @@ class LHSRestrictChecker(Checker):
 		else:
 			for comp_range in comp_ranges:
 				self.check_int(comp_range)
+
 		inspect = Inspector()
 		fact_bases = inspect.get_base_facts( ast_node.facts )
 		if len(fact_bases) != 1:
 			error_idx = self.declare_error("Unsupported LHS Pattern: Comprehension pattern with multiple fact patterns.")
 			for f in ast_node.facts:
 				self.extend_error(error_idx, f)
+		else:
+			self.check_int( ast_node.facts[0] )
+
+		if (len(ast_node.facts) == 1) and (len(comp_ranges) == 1):
+			loc = ast_node.facts[0].loc
+			if loc.name in map(lambda v: v.name,inspect.free_vars( comp_ranges[0].term_vars )):
+				error_idx = self.declare_error("Unsupported LHS Pattern: Multi-location comprehension patterns.")
+				self.extend_error(error_idx, loc)
 
 	@visit.when(ast.CompRange)
 	def check_int(self, ast_node):

@@ -41,3 +41,12 @@ def tmerge(*ts):
 		idx += 1
 	return tuple(tts)
 
+def subseteq(xs, ys, map_func=None):
+	if map_func != None:
+		xs = map(map_func,xs)
+		ys = map(map_func,ys)
+	for x in xs:
+		if x not in ys:
+			return False
+	return True
+

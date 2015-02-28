@@ -239,6 +239,12 @@ def join_ext_cond(sep, strs, prefix="", postfix="", threshold=1):
 	else:
 		return prefix + sep.join( strs ) + postfix
 
+def p_opt(s, prefix="", postfix="", alt=""):
+	if len(s) > 0:
+		return prefix + s + postfix
+	else:
+		return alt
+
 test_str = template('''
 class {|class_name|}:
 	def __init__(self):
