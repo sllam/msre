@@ -414,25 +414,45 @@ def p_rhs_none(p):
 
 def p_fact_compre_pat_1(p):
 	'''
-	fact_comp_pat : CLPAREN loc_fact_list BAR comp_ranges STOP guards CRPAREN
-                      | CLPAREN loc_fact_list BAR comp_ranges CRPAREN
+	fact_comp_pat : CLPAREN loc_fact_list BAR comp_ranges STOP guards CRPAREN comp_option
+                      | CLPAREN loc_fact_list BAR comp_ranges CRPAREN comp_option
 	'''
 	# TODO
-	if len(p) == 8:
-		p[0] = FactCompre(p[2],p[4],p[6],parse_frag=p)
+	if len(p) == 9:
+		p[0] = FactCompre(p[2],p[4],p[6],compre_mod=p[8],parse_frag=p)
 	else:
-		p[0] = FactCompre(p[2],p[4],[],parse_frag=p)
+		p[0] = FactCompre(p[2],p[4],[],compre_mod=p[6],parse_frag=p)
 
 def p_fact_compre_pat_2(p):
 	'''
-	fact_comp_pat : CLPAREN loc_fact_list BAR guards CRPAREN
-                      | CLPAREN loc_fact_list CRPAREN
+	fact_comp_pat : CLPAREN loc_fact_list BAR guards CRPAREN comp_option
+                      | CLPAREN loc_fact_list CRPAREN comp_option
 	'''
 	# TODO
-	if len(p) == 6:
-		p[0] = FactCompre(p[2],[],p[4],parse_frag=p)
+	if len(p) == 7:
+		p[0] = FactCompre(p[2],[],p[4],compre_mod=p[6],parse_frag=p)
 	else:
-		p[0] = FactCompre(p[2],[],[],parse_frag=p)
+		p[0] = FactCompre(p[2],[],[],compre_mod=p[4],parse_frag=p)
+
+def p_fact_compre_pat_3(p):
+	'''
+	fact_comp_pat : BANG CLPAREN loc_fact_list BAR guards CRPAREN
+                      | BANG CLPAREN loc_fact_list CRPAREN
+	'''
+	if len(p) == 7:
+		p[0] = FactCompre(p[3],[],p[5],compre_mod=COMP_NONE_EXISTS,parse_frag=p)
+	else:
+		p[0] = FactCompre(p[3],[],[],compre_mod=COMP_NONE_EXISTS,parse_frag=p)
+
+def p_comp_option(p):
+	'''
+	comp_option : PLUS
+                    | 
+	'''
+	if len(p) == 2:
+		p[0] = COMP_ONE_OR_MORE
+	else:
+		p[0] = COMP_ANY
 
 def p_comp_ranges(p):
 	'''

@@ -43,7 +43,7 @@ from msrex.frontend.analyze.extractors.fact_property_extractor import FactProper
 from msrex.frontend.transform.default_location import DefaultLocation
 from msrex.frontend.transform.rule_linearizer import RuleLinearizer
 from msrex.frontend.transform.alpha_indexer import AlphaIndexer
-# from msrex.frontend.transform.lhs_compre import LHSCompre
+from msrex.frontend.transform.lhs_compre import LHSCompre
 # from msrex.frontend.transform.choreographic import Choreographic
 
 from msrex.frontend.compile.rule_facts import FactDirectory
@@ -72,7 +72,7 @@ def process_msre(file_name, source_text=None, builtin_preds=[]):
                  , 'valid'         : False }
 
 	if len(error_reports) == 0:
-		transformers = [DefaultLocation,RuleLinearizer,AlphaIndexer] #,LHSCompre]
+		transformers = [DefaultLocation,RuleLinearizer,AlphaIndexer,LHSCompre]
 		for transformer in transformers:
 			tr = transformer( decs )
 			tr.transform()

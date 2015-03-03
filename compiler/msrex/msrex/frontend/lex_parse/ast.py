@@ -451,14 +451,19 @@ class FactLocCluster(ASTNode):
 			s = "(%s)" % (','.join(map(str,self.facts)))
 		return "[%s]%s" % (str(self.loc),s)
 
+COMP_NONE_EXISTS = 0
+COMP_ONE_OR_MORE = 1
+COMP_ANY = 2
+
 class FactCompre(ASTNode):
-	def __init__(self, facts, comp_ranges, guards, priority=None, parse_frag=None):
+	def __init__(self, facts, comp_ranges, guards, priority=None, compre_mod=COMP_ANY, parse_frag=None):
 		self.facts = facts
 		self.comp_ranges = comp_ranges
 		self.guards = guards
 		self.fact_type = FACT_COMPRE
 		self.reg_source_info(parse_frag)
 		self.priority = priority
+		self.compre_mod = compre_mod
 	def __str__(self):
 		fact_str = ','.join(map(str,self.facts))
 		if len(self.comp_ranges) == 0:

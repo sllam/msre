@@ -270,6 +270,10 @@ class VarScopeChecker(Checker):
 
 		self.compose_out_scope_error_report(ctxt)
 		
+		# If is LHS, new variables can be declared within this scope.
+		if lhs:
+			ctxt['vars'] += self.inspect.free_vars( ast_node.facts )
+
 		# Extend variable context with comprehension binders
 		ctxt['vars'] += self.inspect.free_vars( map(lambda cr: cr.term_vars, comp_ranges) )
 
