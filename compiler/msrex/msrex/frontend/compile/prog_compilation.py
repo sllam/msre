@@ -35,7 +35,7 @@ from collections import defaultdict
 
 class ProgCompilation:
 
-	def __init__(self, ensem_dec, rules, fact_dir, extern_decs, exec_dec, prog_name, source_text=""):
+	def __init__(self, ensem_dec, rules, fact_dir, extern_decs, exec_dec, prog_name, source_text="", origin_text=""):
 		self.ensem_dec = ensem_dec
 		self.prog_name  = prog_name
 		self.ensem_name = ensem_dec.name
@@ -59,6 +59,11 @@ class ProgCompilation:
 		self.exec_dec    = exec_dec
 
 		self.source_text = source_text
+		self.origin_text = origin_text
+		if len(origin_text) > 0:
+			self.transformed = True
+		else:
+			self.transformed = False
 
 	def get_source(self):
 		return self.ensem_dec.gen_snippet(self.source_text)

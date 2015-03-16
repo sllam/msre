@@ -40,7 +40,7 @@ class RuleLinearizer(Transformer):
 		self.var_ctxt = {}
 
 	def get_fresh_var_name(self):
-		var_name = "lvar%s" % self.var_idx
+		var_name = "Lvar%s" % self.var_idx
 		self.var_idx += 1
 		return var_name
 

@@ -29,7 +29,7 @@ Foundation). The statements made herein are solely the responsibility of the aut
 import msrex.frontend.lex_parse.ast as ast
 import msrex.misc.visit as visit
 
-from msrex.misc.aggregators import subseteq, diff
+from msrex.misc.aggregators import subseteq, diff, foldl
 
 from msrex.frontend.transform.base_transformer import Transformer
 from msrex.frontend.analyze.inspectors import Inspector
@@ -59,6 +59,7 @@ class Choreographic(Transformer):
 		
 	def transform(self):
 		ensem_dec = self.inspect.filter_decs(self.decs, ensem=True)[0]
+		execute_dec = self.inspect.filter_decs(self.decs, execute=True)[0]
 		facts   = self.inspect.filter_decs(ensem_dec.decs, fact=True)
 
 		monotone_facts = {}
@@ -111,7 +112,7 @@ class Choreographic(Transformer):
 		}
 		''')
 
-		prog_execute_codes = []
+		prog_execute_codes = self.generateExecuteCodes(execute_dec, monotone_facts)
 
 		
 		top_level_template_args = { 'ensem_name'       : ensem_dec.name
@@ -138,6 +139,31 @@ class Choreographic(Transformer):
 
 	def generateExportCode(self, export_dec):
 		return self.source_text[export_dec.lex_start:export_dec.lex_end]
+
+	def generateExecuteCodes(self, execute_dec, monotone_facts):
+		return foldl( map(lambda d: self.generateExecuteCode(d, monotone_facts), execute_dec.decs), [] )
+
+	@visit.on( 'exec_dec' )
+	def generateExecuteCode(self, exec_dec, monotone_facts):
+		pass
+
+	@visit.when( ast.ExistDec )
+	def generateExecuteCode(self, exec_dec, monotone_facts):
+		exist_codes = "exists %s." % (','.join(map(lambda v: self.generateTerm(v),exec_dec.exist_vars)))
+		mono_init_codes = []
+		if len(monotone_facts.keys()) > 0:
+			for exist_var in exec_dec.exist_vars:
+				mono_init_code = "%s." % (','.join(map(lambda m: self.generateFact( ast.FactLoc(exist_var, m['lock']) ),monotone_facts.values())))
+				mono_init_codes.append( mono_init_code )
+		return [exist_codes] + mono_init_codes
+		
+	@visit.when( ast.LocFactDec )
+	def generateExecuteCode(self, exec_dec, monotone_facts):
+		return ["%s." % (','.join(map(lambda f: self.generateFact(f), exec_dec.loc_facts)))]
+
+	@visit.when( ast.AssignDec )
+	def generateExecuteCode(self, exec_dec, monotone_facts):
+		return [self.generateAssignDec(exec_dec)]
 
 	def generateRuleCode(self, rule_dec, sync_used, sync_pred_infos, monotone_facts, sync_template_args):
 		# Program does not use sync, hence just return the original source rule
@@ -280,7 +306,7 @@ class Choreographic(Transformer):
 		rule_body = self.generateFact( rule_dec.rhs + all_lk_facts )
 
 		if len( rule_dec.where ) > 0:
-			where_clauses = ", ".join( map(lambda w: self.generateAssignDec(w), rule_dec.where) )
+			where_clauses = "where %s." % (", ".join( map(lambda w: self.generateAssignDec(w), rule_dec.where) ))
 		else:
 			where_clauses = ""
 			rule_body += "."
@@ -297,7 +323,7 @@ class Choreographic(Transformer):
                                              , 'abort_fact' : self.generateSyncPredFact(primary_loc, sync_pred_info['abort']['name'], sync_pred_info['abort']['args']) }
 			req_fail_rule_codes.append( compile_template(req_fail_rule_template, **req_fail_rule_args) )
 
-		p_simp_lk_facts = self.generateFact( lock_pred_acq[primary_loc].values() + p_simp_fact_info )
+		p_simp_lk_facts = self.generateFact( lock_pred_acq[primary_loc].values() + p_simp_fact_info, rhs=True )
 		if len(p_simp_lk_facts) == 0:
 			p_simp_lk_facts = "1"
 
@@ -311,7 +337,7 @@ class Choreographic(Transformer):
 			o_simp_fact_info = retrieveFacts(other_obligations[other_loc], simps=True, triggers=True, facts=True)
 			o_lk_fact_info   = lock_pred_acq[other_loc].values()
 			if len(o_simp_fact_info + o_lk_fact_info) > 0:
-				o_lksimp_facts = self.generateFact( o_lk_fact_info + o_simp_fact_info )
+				o_lksimp_facts = self.generateFact( o_lk_fact_info + o_simp_fact_info, rhs=True )
 			else:
 				o_lksimp_facts = "1"
 			abort_rule_args = { 'rule_name'      : rule_name
@@ -370,7 +396,8 @@ class Choreographic(Transformer):
 		req_info   = {}
 		lhs_info   = {}
 		for loc in other_locs:
-			probe_info[loc] = { 'name':'%sProbe%s' % (rule_name,loc), 'args':[exist_var]+primary_vars }
+			primary_vars_mloc = diff(primary_vars, loc, fx=lambda x: x.name)
+			probe_info[loc] = { 'name':'%sProbe%s' % (rule_name,loc), 'args':[exist_var,primary_obligation['term']]+primary_vars_mloc }
 			ready_info[loc] = { 'name':'%sReady%s' % (rule_name,loc), 'args':[exist_var,other_obligations[loc]['term']] }
 			req_info[loc]   = { 'name':'%sReq%s' % (rule_name,loc), 'args':[exist_var,primary_obligation['term']]+diff(primary_vars, [loc], fx=lambda x:x.name) }
 			lhs_info[loc]   = { 'name':'%sLHS%s' % (rule_name,loc), 'args':[exist_var,other_obligations[loc]['term']]+other_vars[loc] }
@@ -492,7 +519,7 @@ class Choreographic(Transformer):
 
 	@visit.when( ast.TermApp )
 	def generateTerm(self, term):
-		return "(%s%s)" % (self.generateTerm(term.term1),self.generateTerm(term.term2))
+		return "(%s(%s))" % (self.generateTerm(term.term1),self.generateTerm(term.term2))
 
 	@visit.when( ast.TermTuple )
 	def generateTerm(self, term):
@@ -580,53 +607,60 @@ class Choreographic(Transformer):
 	def generateType(self, typ):
 		return "[%s]" % self.generateType(typ.type)
 
-	def generateCompRange(self, comp_range):
+	def generateCompRange(self, comp_range, rhs=False):
 		var_code = self.generateTerm( comp_range.term_vars )
 		dom_code = self.generateTerm( comp_range.term_range )
-		if self.is_lhs:
+		if not rhs:
 			return "%s -> %s" % (var_code,dom_code)
 		else:
 			return "%s <- %s" % (var_code,dom_code)
 
 	@visit.on( 'fact' )
-	def generateFact(self, fact):
+	def generateFact(self, fact, rhs=False):
 		pass
 
 	@visit.when( list )
-	def generateFact(self, fact):
-		return ', '.join(map(lambda f: self.generateFact(f),fact))
+	def generateFact(self, fact, rhs=False):
+		return ', '.join(map(lambda f: self.generateFact(f, rhs=rhs),fact))
 
 	@visit.when( ast.FactBase )
-	def generateFact(self, fact):
+	def generateFact(self, fact, rhs=False):
 		term_code = ','.join( map(lambda t: self.generateTerm(t), fact.terms) )
 		return "%s(%s)" % (fact.name,term_code)
 
 	@visit.when( ast.FactLoc )
-	def generateFact(self, fact):
+	def generateFact(self, fact, rhs=False):
 		return "[%s]%s" % (self.generateTerm(fact.loc),self.generateFact(fact.fact))
 
 	@visit.when( ast.FactCompre )
-	def generateFact(self, fact):
+	def generateFact(self, fact, rhs=False):
 		fact_code = ','.join( map(lambda f: self.generateFact(f),fact.facts) )
 		
-		comp_code = ','.join( map(lambda cr: self.generateCompRange(cr), fact.comp_ranges) )
+		comp_code = ','.join( map(lambda cr: self.generateCompRange(cr, rhs=rhs), fact.comp_ranges) )
 		grd_code  = ','.join( map(lambda g: self.generateTerm(g), fact.guards) )
 
-		if len(fact.comp_ranges) > 0 and len(fact.guards) > 0:
-			quan_code = "|%s.%s" % (comp_code,grd_code)
-		elif len(fact.comp_ranges) > 0 and len(fact.guards) == 0:
-			quan_code = "|%s" % comp_code
-		elif len(fact.comp_ranges) == 0 and len(fact.guards) > 0:
-			quan_code = "|%s" % grd_code
+		if not rhs:
+			if len(fact.comp_ranges) > 0 and len(fact.guards) > 0:
+				quan_code = "|%s.%s" % (comp_code,grd_code)
+			elif len(fact.comp_ranges) > 0 and len(fact.guards) == 0:
+				quan_code = "|%s" % comp_code
+			elif len(fact.comp_ranges) == 0 and len(fact.guards) > 0:
+				quan_code = "|%s" % grd_code
+			else:
+				quan_code = ""
 		else:
-			quan_code = ""
+			if len(fact.comp_ranges) > 0:
+				quan_code = "|%s" % comp_code
+			else:
+				quan_code = ""
 
 		fact_comp_str = "{%s%s}" % (fact_code,quan_code)
 
-		if fact.compre_mod == ast.COMP_NONE_EXISTS:
-			fact_comp_str = "!%s" % fact_comp_str			
-		if fact.compre_mod == ast.COMP_ONE_OR_MORE:
-			fact_comp_str = "%s+" % fact_comp_str
+		if not rhs:
+			if fact.compre_mod == ast.COMP_NONE_EXISTS:
+				fact_comp_str = "!%s" % fact_comp_str			
+			if fact.compre_mod == ast.COMP_ONE_OR_MORE:
+				fact_comp_str = "%s+" % fact_comp_str
 
 		return fact_comp_str
 

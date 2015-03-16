@@ -57,7 +57,7 @@ from msrex.frontend.builtin.predicates import BuiltinPred
 def mk_prog_name( file_name ):
 	return split(file_name, ".")[0]
 
-def process_msre(file_name, source_text=None, builtin_preds=[]):
+def process_msre(file_name, source_text=None, origin_text="", builtin_preds=[]):
 	if source_text == None:
 		(source_text, decs) = p.run_parser(file_name)
 	else:
@@ -88,8 +88,10 @@ def process_msre(file_name, source_text=None, builtin_preds=[]):
 			nc_file_name = "%s_node_centric.cmg" % mk_prog_name( file_name )
 			nc_output_file = open(nc_file_name, 'w')
 			nc_output_file.write( choreographic_transform.getGeneratedCodes() )
+			return process_msre(file_name, source_text=choreographic_transform.getGeneratedCodes()
+                                           ,origin_text=source_text, builtin_preds=builtin_preds)
 
-		prog = process_prog( decs, mk_prog_name( file_name ), data, builtin_preds=builtin_preds, source_text=source_text)
+		prog = process_prog( decs, mk_prog_name( file_name ), data, builtin_preds=builtin_preds, source_text=source_text, origin_text=origin_text)
 		output['valid'] = True
 		output['rules'] = prog.rules
 		output['fact_dir'] = prog.fact_dir
@@ -117,7 +119,7 @@ def check_validity(decs, source_text, checkers=[PragmaChecker,LHSRestrictChecker
 			break
 	return (reports,analysis,data)
 
-def process_prog( decs, prog_name, data, builtin_preds=[], source_text=""):
+def process_prog( decs, prog_name, data, builtin_preds=[], source_text="",origin_text=""):
 	# Currently assumes that there is exactly one ensemble dec and one exec dec for that emsemble.	
 	inspect = Inspector()
 	ensem_dec = inspect.filter_decs(decs, ensem=True)[0]
@@ -130,7 +132,7 @@ def process_prog( decs, prog_name, data, builtin_preds=[], source_text=""):
 
 	rules = process_ensemble( ensem_dec, fact_dir )
 	
-	prog = ProgCompilation(ensem_dec, rules, fact_dir, externs, exec_dec, prog_name, source_text=source_text)
+	prog = ProgCompilation(ensem_dec, rules, fact_dir, externs, exec_dec, prog_name, source_text=source_text, origin_text=origin_text)
 
 	return prog
 
