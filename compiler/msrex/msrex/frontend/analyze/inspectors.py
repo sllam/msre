@@ -481,11 +481,11 @@ class Inspector:
 		free_vars = self.free_vars(ast_node, loc=loc, args=args, compre_binders=compre_binders, uscores=uscores)
 		return set(map(lambda fv: fv.rule_idx, free_vars))
 
-	def set_vars(self, vs):
+	def set_vars(self, vs, comp=lambda v: v.rule_idx):
 		vs_dict = {}
 		for v in vs:
-			if v.rule_idx not in vs_dict:
-				vs_dict[v.rule_idx] = v
+			if comp(v) not in vs_dict:
+				vs_dict[comp(v)] = v
 		return vs_dict.values()
 
 	def get_all_free_vars(self, ast_node):

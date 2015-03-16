@@ -436,8 +436,8 @@ def p_fact_compre_pat_2(p):
 
 def p_fact_compre_pat_3(p):
 	'''
-	fact_comp_pat : BANG CLPAREN loc_fact_list BAR guards CRPAREN
-                      | BANG CLPAREN loc_fact_list CRPAREN
+	fact_comp_pat : MINUS CLPAREN loc_fact_list BAR guards CRPAREN
+                      | MINUS CLPAREN loc_fact_list CRPAREN
 	'''
 	if len(p) == 7:
 		p[0] = FactCompre(p[3],[],p[5],compre_mod=COMP_NONE_EXISTS,parse_frag=p)

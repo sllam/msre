@@ -50,3 +50,13 @@ def subseteq(xs, ys, map_func=None):
 			return False
 	return True
 
+def diff(xs, ys, fx=lambda x: x, fy=lambda y: y):
+	zs = []
+	fys = map(fy, ys)
+	for x in xs:
+		if fx(x) not in fys:
+			zs.append( x )
+	return zs
+
+
+

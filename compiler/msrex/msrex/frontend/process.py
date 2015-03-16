@@ -44,7 +44,7 @@ from msrex.frontend.transform.default_location import DefaultLocation
 from msrex.frontend.transform.rule_linearizer import RuleLinearizer
 from msrex.frontend.transform.alpha_indexer import AlphaIndexer
 from msrex.frontend.transform.lhs_compre import LHSCompre
-# from msrex.frontend.transform.choreographic import Choreographic
+from msrex.frontend.transform.choreographic import Choreographic
 
 from msrex.frontend.compile.rule_facts import FactDirectory
 from msrex.frontend.compile.rules import Rule
@@ -82,14 +82,12 @@ def process_msre(file_name, source_text=None, builtin_preds=[]):
 			output['error_reports'] += error_reports
 			return output
 
-		'''
 		choreographic_transform = Choreographic(decs, source_text)
 		if choreographic_transform.required():
 			choreographic_transform.transform()
 			nc_file_name = "%s_node_centric.cmg" % mk_prog_name( file_name )
 			nc_output_file = open(nc_file_name, 'w')
 			nc_output_file.write( choreographic_transform.getGeneratedCodes() )
-		'''
 
 		prog = process_prog( decs, mk_prog_name( file_name ), data, builtin_preds=builtin_preds, source_text=source_text)
 		output['valid'] = True
@@ -124,28 +122,21 @@ def process_prog( decs, prog_name, data, builtin_preds=[], source_text=""):
 	inspect = Inspector()
 	ensem_dec = inspect.filter_decs(decs, ensem=True)[0]
 	exec_dec  = inspect.filter_decs(decs, execute=True)[0]
+	facts   = inspect.filter_decs(ensem_dec.decs, fact=True)
+	externs = inspect.filter_decs(ensem_dec.decs, extern=True)
 
-	# print ensem_dec
-	# print exec_dec
+	facts += map(lambda bp: bp.getFactDec(), builtin_preds)
+	fact_dir = FactDirectory( facts )
 
-	fact_dir, externs, rules = process_ensemble( ensem_dec, builtin_preds=builtin_preds )
+	rules = process_ensemble( ensem_dec, fact_dir )
 	
 	prog = ProgCompilation(ensem_dec, rules, fact_dir, externs, exec_dec, prog_name, source_text=source_text)
 
 	return prog
 
-def process_ensemble(ensem_dec, builtin_preds=[]):
+def process_ensemble(ensem_dec, fact_dir):
 	inspect = Inspector()
-	facts   = inspect.filter_decs(ensem_dec.decs, fact=True)
 	rules   = inspect.filter_decs(ensem_dec.decs, rule=True)
-	externs = inspect.filter_decs(ensem_dec.decs, extern=True)
 
-	facts += map(lambda bp: bp.getFactDec(), builtin_preds)
-
-	# print facts
-	# print rules
-
-	fact_dir = FactDirectory( facts )
-
-	return (fact_dir, externs, map(lambda r: Rule(r, fact_dir),rules))
+	return map(lambda r: Rule(r, fact_dir),rules)
 
