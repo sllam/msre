@@ -51,10 +51,12 @@ def extend(match_obligations, v, fact, is_simp, role):
 		elif role == ast.ACTUATOR_FACT:
 			acts = [fact]	
 		if is_simp:
-			match_obligations[v.name] = { 'simp':{ 'triggers':trgs, 'actuators':acts, 'facts':stds }
+			match_obligations[v.name] = { 'term':v
+                                                    , 'simp':{ 'triggers':trgs, 'actuators':acts, 'facts':stds }
                                                     , 'prop':{ 'triggers':[], 'actuators':[], 'facts':[] } }
 		else:
-			match_obligations[v.name] = { 'prop':{ 'triggers':trgs, 'actuators':acts, 'facts':stds }
+			match_obligations[v.name] = { 'term':v
+                                                    , 'prop':{ 'triggers':trgs, 'actuators':acts, 'facts':stds }
                                                     , 'simp':{ 'triggers':[], 'actuators':[], 'facts':[] } }
 
 def mkNewRoleDict(trgs=[],acts=[],stds=[],mix=[]):
