@@ -273,7 +273,7 @@ class Choreographic(Transformer):
                                              , 'o_prop_facts' : o_prop_facts
                                              , 'o_simp_facts' : o_simp_facts
                                              , 'o_grds' : "%s," % self.generateTerm( other_guards[other_loc] ) if len(other_guards[other_loc]) > 0 else ""
-                                             , 'o_lhs_fact' : self.generateSyncPredFact(other_loc, o_lhs_info['name'], o_lhs_info['args']) }
+                                             , 'o_lhs_fact' : self.generateSyncPredFact(primary_loc, o_lhs_info['name'], o_lhs_info['args']) }
 			req_succ_rule_codes.append( compile_template(req_succ_rule_template, **req_succ_rule_args) )
 
 		ready_facts = ', '.join( map(lambda (loc,info): self.generateSyncPredFact(primary_loc, info['name'], info['args']), sync_pred_info['ready'].items()) )
@@ -511,7 +511,7 @@ class Choreographic(Transformer):
 
 	@visit.when( ast.TermCons )
 	def generateTerm(self, term):
-		return term.name
+		return "%s" % term.name
 
 	@visit.when( ast.TermVar )
 	def generateTerm(self, term):
@@ -551,7 +551,7 @@ class Choreographic(Transformer):
 
 	@visit.when( ast.TermLit )
 	def generateTerm(self, term):
-		return term.literal
+		return "%s" % term.literal
 
 	@visit.when( ast.TermUnderscore )
 	def generateTerm(self, term):
