@@ -65,6 +65,17 @@ class ProgCompilation:
 		else:
 			self.transformed = False
 
+		inspect = Inspector()
+		role_sig_decs = inspect.filter_decs(ensem_dec.decs, rolesig=True)
+		role_def_decs = inspect.filter_decs(ensem_dec.decs, roledef=True)
+		role_dict = {}
+		for role_sig_dec in role_sig_decs:
+			role_dict[ role_sig_dec.name ] = { 'sig':role_sig_dec }
+		for role_def_dec in role_def_decs:
+			role_dict[ role_def_dec.name ]['def'] = role_def_dec
+		self.role_dict = role_dict
+
+
 	def get_source(self):
 		return self.ensem_dec.gen_snippet(self.source_text)
 
