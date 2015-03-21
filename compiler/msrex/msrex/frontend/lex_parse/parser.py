@@ -203,7 +203,7 @@ def p_export_query(p):
 
 # Location Declarations
 
-def p_declaration_init(p):
+def p_declaration_exec(p):
 	'''
 	declaration : EXEC NAME CLPAREN declarations CRPAREN
 	'''
@@ -237,12 +237,6 @@ def p_loc_name_list(p):
 	else:
 		p[0] = [p[1]]
 
-def p_declaration_loc(p):
-	'''
-	declaration : INIT NAME COLON COLON fact_list STOP
-	'''
-	p[0] = InitDec(p[2],p[5],parse_frag=p)
-
 def p_fact_list(p):
 	'''
 	fact_list : fact COMMA fact_list
@@ -252,6 +246,30 @@ def p_fact_list(p):
 		p[0] = [p[1]] + p[3]
 	else:
 		p[0] = [p[1]]
+
+# Role and Init Declarations
+
+def p_declaration_role_sig(p):
+	'''
+	declaration : ROLE NAME COLON COLON type STOP
+	'''
+	p[0] = RoleSigDec(p[2],p[5],parse_frag=p)
+
+def p_declaration_role_def(p):
+	'''
+	declaration : ROLE SLPAREN location SRPAREN fact ASSIGN rule_rhs STOP
+                    | ROLE SLPAREN location SRPAREN fact ASSIGN rule_rhs WHERE assign_stmts STOP
+	'''
+	if len(p) == 9:
+		p[0] = RoleDefDec(p[3], p[5], p[7], parse_frag=p)
+	else:
+		p[0] = RoleDefDec(p[3], p[5], p[7], where=p[9], parse_frag=p)
+		
+def p_declaration_init_def(p):
+	'''
+	declaration : INIT var_list AS fact STOP
+	'''
+	p[0] = InitDec(p[2], p[4], parse_frag=p)
 
 # Rule Declarations
 

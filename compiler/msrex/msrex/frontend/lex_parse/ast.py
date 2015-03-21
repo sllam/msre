@@ -297,6 +297,29 @@ class LocFactDec(ASTNode):
 	def __str__(self):
 		return "loc_fact_dec([%s])" % ( ','.join(self.loc_facts) )
 
+class RoleSigDec(ASTNode):
+	def __init__(self, name, type, parse_frag=None):
+		self.name = name
+		self.type = type
+		self.reg_source_info(parse_frag, highlight_idx=2)
+	def adjust_lex(self):
+		self.hl_end = self.hl_start + len(self.name)
+	def __str__(self):
+		return "role_sig_dec(%s,%s)" % (self.name,self.type)
+
+class RoleDefDec(ASTNode):
+	def __init__(self, loc, fact, facts, where=[], parse_frag=None): 
+		self.loc  = loc
+		self.fact = fact
+		self.facts = facts
+		self.name = fact.name
+		self.where = where
+		self.reg_source_info(parse_frag)
+	def adjust_lex(self):
+		self.hl_end = self.hl_start + 4
+	def __str__(self):
+		return "role_def_dec(%s,%s)" % (self.fact,','.join(map(lambda f: "%s" % f,self.facts)))
+
 '''
 class FactDec:
 	def __init__(self, modifiers, fact_type):
@@ -390,12 +413,12 @@ class RuleDec(ASTNode):
 		return "rule_dec(%s,[%s],[%s],[%s],[%s],[%s],[%s])" % (str(self.name), ','.join( map(str,self.slhs) ), ','.join( map(str,self.plhs) ), ','.join( map(str,self.grd) ), ','.join(map(str,self.exists)), ','.join(map(str,self.rhs)) , ','.join(map(str,self.where)) )
 
 class InitDec(ASTNode):
-	def __init__(self, name, facts, parse_frag=None):
-		self.name = name
-		self.facts = facts
+	def __init__(self, locs, fact_base, parse_frag=None):
+		self.locs = locs
+		self.fact = fact_base
 		self.reg_source_info(parse_frag)
 	def __str__(self):
-		return "init_dec(%s,[%s])" % (str(self.name), ','.join(map(str,self.facts)) )
+		return "init_dec([%s],%s)" % (','.join(map(lambda l: str(l),self.locs)), self.fact)
 
 class AssignDec(ASTNode):
 	def __init__(self, term_pat, builtin_exp, parse_frag=None):

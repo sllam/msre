@@ -193,59 +193,67 @@ class Inspector:
 	# Filtering from Decs
 
 	@visit.on('dec')
-	def filter_decs(self, dec, ensem=False, extern=False, execute=False, fact=False, rule=False, assign=False, init=False, exist=False, loc_facts=False, pragmas=False, export=False):
+	def filter_decs(self, dec, ensem=False, extern=False, execute=False, fact=False, rule=False, assign=False, init=False, exist=False, loc_facts=False, pragmas=False, export=False, rolesig=False, roledef=False):
 		pass
 
 	@visit.when(list)
-	def filter_decs(self, dec, ensem=False, extern=False, execute=False, fact=False, rule=False, assign=False, init=False, exist=False, loc_facts=False, pragmas=False, export=False):
+	def filter_decs(self, dec, ensem=False, extern=False, execute=False, fact=False, rule=False, assign=False, init=False, exist=False, loc_facts=False, pragmas=False, export=False, rolesig=False, roledef=False):
 		decs = []
 		for d in dec:
 			decs += self.filter_decs(d, ensem=ensem, extern=extern, execute=execute, fact=fact, rule=rule, assign=assign, init=init
-                                                ,exist=exist, loc_facts=loc_facts, pragmas=pragmas, export=export)
+                                                ,exist=exist, loc_facts=loc_facts, pragmas=pragmas, export=export, rolesig=rolesig, roledef=roledef)
 		return decs
 
 	@visit.when(ast.PragmaDec)
-	def filter_decs(self, dec, ensem=False, extern=False, execute=False, fact=False, rule=False, assign=False, init=False, exist=False, loc_facts=False, pragmas=False, export=False):
+	def filter_decs(self, dec, ensem=False, extern=False, execute=False, fact=False, rule=False, assign=False, init=False, exist=False, loc_facts=False, pragmas=False, export=False, rolesig=False, roledef=False):
 		return [dec] if pragmas else []
 
 	@visit.when(ast.EnsemDec)
-	def filter_decs(self, dec, ensem=False, extern=False, execute=False, fact=False, rule=False, assign=False, init=False, exist=False, loc_facts=False, pragmas=False, export=False):
+	def filter_decs(self, dec, ensem=False, extern=False, execute=False, fact=False, rule=False, assign=False, init=False, exist=False, loc_facts=False, pragmas=False, export=False, rolesig=False, roledef=False):
 		return [dec] if ensem else []
 
 	@visit.when(ast.ExternDec)
-	def filter_decs(self, dec, ensem=False, extern=False, execute=False, fact=False, rule=False, assign=False, init=False, exist=False, loc_facts=False, pragmas=False, export=False):
+	def filter_decs(self, dec, ensem=False, extern=False, execute=False, fact=False, rule=False, assign=False, init=False, exist=False, loc_facts=False, pragmas=False, export=False, rolesig=False, roledef=False):
 		return [dec] if extern else []
 
 	@visit.when(ast.ExecDec)
-	def filter_decs(self, dec, ensem=False, extern=False, execute=False, fact=False, rule=False, assign=False, init=False, exist=False, loc_facts=False, pragmas=False, export=False):
+	def filter_decs(self, dec, ensem=False, extern=False, execute=False, fact=False, rule=False, assign=False, init=False, exist=False, loc_facts=False, pragmas=False, export=False, rolesig=False, roledef=False):
 		return [dec] if execute else []
 
 	@visit.when(ast.ExistDec)
-	def filter_decs(self, dec, ensem=False, extern=False, execute=False, fact=False, rule=False, assign=False, init=False, exist=False, loc_facts=False, pragmas=False, export=False):
+	def filter_decs(self, dec, ensem=False, extern=False, execute=False, fact=False, rule=False, assign=False, init=False, exist=False, loc_facts=False, pragmas=False, export=False, rolesig=False, roledef=False):
 		return [dec] if exist else []
 
 	@visit.when(ast.LocFactDec)
-	def filter_decs(self, dec, ensem=False, extern=False, execute=False, fact=False, rule=False, assign=False, init=False, exist=False, loc_facts=False, pragmas=False, export=False):
+	def filter_decs(self, dec, ensem=False, extern=False, execute=False, fact=False, rule=False, assign=False, init=False, exist=False, loc_facts=False, pragmas=False, export=False, rolesig=False, roledef=False):
 		return [dec] if loc_facts else []
 
 	@visit.when(ast.FactDec)
-	def filter_decs(self, dec, ensem=False, extern=False, execute=False, fact=False, rule=False, assign=False, init=False, exist=False, loc_facts=False, pragmas=False, export=False):
+	def filter_decs(self, dec, ensem=False, extern=False, execute=False, fact=False, rule=False, assign=False, init=False, exist=False, loc_facts=False, pragmas=False, export=False, rolesig=False, roledef=False):
 		return [dec] if fact else []
 
 	@visit.when(ast.RuleDec)
-	def filter_decs(self, dec, ensem=False, extern=False, execute=False, fact=False, rule=False, assign=False, init=False, exist=False, loc_facts=False, pragmas=False, export=False):
+	def filter_decs(self, dec, ensem=False, extern=False, execute=False, fact=False, rule=False, assign=False, init=False, exist=False, loc_facts=False, pragmas=False, export=False, rolesig=False, roledef=False):
 		return [dec] if rule else []
 
 	@visit.when(ast.AssignDec)
-	def filter_decs(self, dec, ensem=False, extern=False, execute=False, fact=False, rule=False, assign=False, init=False, exist=False, loc_facts=False, pragmas=False, export=False):
+	def filter_decs(self, dec, ensem=False, extern=False, execute=False, fact=False, rule=False, assign=False, init=False, exist=False, loc_facts=False, pragmas=False, export=False, rolesig=False, roledef=False):
 		return [dec] if assign else []
 
+	@visit.when(ast.RoleSigDec)
+	def filter_decs(self, dec, ensem=False, extern=False, execute=False, fact=False, rule=False, assign=False, init=False, exist=False, loc_facts=False, pragmas=False, export=False, rolesig=False, roledef=False):
+		return [dec] if rolesig else []
+
+	@visit.when(ast.RoleDefDec)
+	def filter_decs(self, dec, ensem=False, extern=False, execute=False, fact=False, rule=False, assign=False, init=False, exist=False, loc_facts=False, pragmas=False, export=False, rolesig=False, roledef=False):
+		return [dec] if roledef else []
+
 	@visit.when(ast.InitDec)
-	def filter_decs(self, dec, ensem=False, extern=False, execute=False, fact=False, rule=False, assign=False, init=False, exist=False, loc_facts=False, pragmas=False, export=False):
+	def filter_decs(self, dec, ensem=False, extern=False, execute=False, fact=False, rule=False, assign=False, init=False, exist=False, loc_facts=False, pragmas=False, export=False, rolesig=False, roledef=False):
 		return [dec] if init else []
 
 	@visit.when(ast.ExportDec)
-	def filter_decs(self, dec, ensem=False, extern=False, execute=False, fact=False, rule=False, assign=False, init=False, exist=False, loc_facts=False, pragmas=False, export=False):
+	def filter_decs(self, dec, ensem=False, extern=False, execute=False, fact=False, rule=False, assign=False, init=False, exist=False, loc_facts=False, pragmas=False, export=False, rolesig=False, roledef=False):
 		return [dec] if export else []
 
 	# Filtering Facts from FactLoc

@@ -134,6 +134,20 @@ class TypeChecker(Checker):
 				export_dec_cons += cons
 			else:
 				this_s = False
+
+		role_sig_cons = []
+		for role_sig in inspect.filter_decs(ast_node.decs, rolesig=True):
+			(s,cons) = self.int_check_dec(role_sig, ctxt)
+			s0 = s0 and s
+			role_sig_cons += cons
+		role_def_cons = []
+		for role_def in inspect.filter_decs(ast_node.decs, roledef=True):
+			(s,cons) = self.int_check_dec(role_def, ctxt)
+			s0 = s0 and s
+			role_def_cons += cons
+		if not self.check_type_sat( role_sig_cons + role_def_cons):
+			this_s = False
+
 		rule_dec_cons = []
 		for rule_dec in inspect.filter_decs(ast_node.decs, rule=True):
 			(s,cons) = self.int_check_dec(rule_dec, ctxt)
@@ -142,8 +156,8 @@ class TypeChecker(Checker):
 				rule_dec_cons += cons
 			else:
 				this_s = False
-		ctxt['ensem'][ast_node.name] = { 'succ':s0 and this_s, 'cons':extern_cons + fact_dec_cons }
-		return (s0 and this_s, extern_cons + fact_dec_cons + export_dec_cons + rule_dec_cons)
+		ctxt['ensem'][ast_node.name] = { 'succ':s0 and this_s, 'cons':extern_cons + fact_dec_cons + role_sig_cons }
+		return (s0 and this_s, extern_cons + fact_dec_cons + export_dec_cons + role_sig_cons + role_def_cons + rule_dec_cons)
 
 	@visit.when( ast.ExternDec )
 	def int_check_dec(self, ast_node, ctxt):
@@ -226,7 +240,8 @@ class TypeChecker(Checker):
 		for exist in ast_node.exist_vars:
 			(s,t,cs) = self.int_check_term(exist, ctxt)
 			s0 = s0 and s
-			cons += [(t |Eq| tyLoc |just| [exist])|Or|(t |Eq| tyDest |just| [exist])] + cs
+			# cons += [(t |Eq| tyLoc |just| [exist])|Or|(t |Eq| tyDest |just| [exist])] + cs
+			cons += [t |Eq| tyDest |just| [exist]] + cs
 		return (s0, cons)
 
 	@visit.when( ast.AssignDec )
@@ -238,12 +253,45 @@ class TypeChecker(Checker):
 	@visit.when( ast.LocFactDec )
 	def int_check_dec(self, ast_node, ctxt):
 		s0   = True
-		cons = []		
+		cons = []
 		for loc_fact in ast_node.loc_facts:
 			(s,cs) = self.int_check_fact(loc_fact, ctxt)
 			s0 = s0 and s
 			cons += cs
 		return (s0, cons)
+
+	@visit.when( ast.RoleSigDec )
+	def int_check_dec(self, ast_node, ctxt):
+		local_ctxt  = copy_ctxt(ctxt)
+		tvar1 = tyVar()
+		ctxt['pred'][ast_node.name] = tvar1
+		(s,tvar2,cons) = self.int_check_type(ast_node.type, local_ctxt)
+		return (s,[tvar1 |Eq| tvar2 |just| [ast_node]] + cons)
+
+	@visit.when( ast.RoleDefDec )
+	def int_check_dec(self, ast_node, ctxt):
+		s0 = True
+		(s,t,cs) = self.int_check_term(ast_node.loc, ctxt)
+		cons = [t |Eq| tyLoc |just| [ast_node.loc]] + cs
+		(s,cs) = self.int_check_fact(ast_node.fact, ctxt)
+		s0 = s0 and s
+		cons += cs 
+		for fact in ast_node.facts:
+			(s,cs) = self.int_check_fact(fact, ctxt)
+			s0 = s0 and s
+			cons += cs
+		return (s0,cons)
+
+	@visit.when( ast.InitDec )
+	def int_check_dec(self, ast_node, ctxt):
+		s0 = True
+		cons = []
+		for loc in ast_node.locs:
+			(s,t,cs) = self.int_check_term(loc, ctxt)
+			s0 = s0 and s
+			cons += [(t |Eq| tyLoc |just| [loc])] + cs
+		(s,cs) = self.int_check_fact(ast_node.fact, ctxt)
+		return (s0 and s, cons + cs)
 
 	# Check Facts
 

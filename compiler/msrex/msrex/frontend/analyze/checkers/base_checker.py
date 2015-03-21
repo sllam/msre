@@ -172,11 +172,26 @@ class Checker:
 		self.extend_display_regions(error_idxs,[(ast_node.lex_start,ast_node.lex_end)])
 		return error_idxs
 
+	@visit.when(ast.RoleSigDec)
+	def build_display_regions(self, ast_node):
+		error_idxs = ast_node.error_idxs + self.build_display_regions(ast_node.type)
+		self.extend_display_regions(error_idxs,[(ast_node.lex_start,ast_node.lex_end)])
+		return error_idxs
+		
+	@visit.when(ast.RoleDefDec)
+	def build_display_regions(self, ast_node):
+		error_idxs = ast_node.error_idxs + self.build_display_regions(ast_node.loc) + self.build_display_regions(ast_node.fact)
+		for fact in ast_node.facts:
+			error_idxs += self.build_display_regions(fact)
+		self.extend_display_regions(error_idxs,[(ast_node.lex_start,ast_node.lex_end)])
+		return error_idxs
+
 	@visit.when(ast.InitDec)
 	def build_display_regions(self, ast_node):
 		error_idxs = []
-		for fact in ast_node.facts:
-			error_idxs += self.build_display_regions(fact)
+		for loc in ast_node.locs:
+			error_idxs += self.build_display_regions(loc)
+		error_idxs += self.build_display_regions(ast_node.fact)
 		error_idxs = set_interp( error_idxs )
 		self.extend_display_regions(error_idxs,[(ast_node.lex_start,ast_node.lex_end)])
 		return error_idxs

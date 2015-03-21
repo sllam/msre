@@ -41,6 +41,8 @@ reserved = { "module"    : "MODULE"
            , "with"   : "WITH"
            , "such"   : "SUCH"
            , "that"   : "THAT"
+           , "role"   : "ROLE"
+           , "as"     : "AS"
            , "init"   : "INIT"
            , "ensem"  : "ENSEM"
            , "execute"   : "EXEC"
@@ -91,7 +93,7 @@ tokens = [
 ] + list(reserved.values())
 
 t_ignore   = " \t\n"
-t_ignore_COMMENT = r'\#.*'
+t_ignore_COMMENT = r'//.*'
 t_AT       = r"@"
 t_UNDERSCORE = r'\_'
 t_IMPLIES = r'\-\-o'

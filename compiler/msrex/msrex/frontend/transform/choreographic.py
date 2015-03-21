@@ -90,6 +90,9 @@ class Choreographic(Transformer):
 	
 		sync_mods_codes, sync_preds_codes, sync_exports_codes = self.generateSyncPredCodes(sync_pred_infos, sync_template_args)
 
+		role_decs = self.inspect.filter_decs(ensem_dec.decs, rolesig=True, roledef=True)
+		role_codes = map(lambda r: self.generateRoleCode(r, monotone_facts), role_decs)
+
 		node_centric_template = template('''
 		ensem {| ensem_name |} {
 			{| '\\n'.join( prog_mods_codes ) |}
@@ -100,6 +103,8 @@ class Choreographic(Transformer):
 			{| '\\n'.join( monotone_predlocks_codes ) |}
 
 			{| sync_preds_codes |}
+
+			{| '\\n'.join( role_codes ) |}
 
 			{| '\\n'.join( prog_exports_codes ) |}
 			{| '\\n'.join( sync_exports_codes ) |}
@@ -121,6 +126,7 @@ class Choreographic(Transformer):
                                           , 'sync_preds_codes' : sync_preds_codes
                                           , 'monotone_predlocks_codes' : monotone_predlocks_codes
                                           , 'prog_preds_codes' : prog_preds_codes
+                                          , 'role_codes' : role_codes
                                           , 'sync_exports_codes' : sync_exports_codes
                                           , 'prog_exports_codes' : prog_exports_codes
                                           , 'prog_rules_codes'   : prog_rules_codes
@@ -140,6 +146,29 @@ class Choreographic(Transformer):
 	def generateExportCode(self, export_dec):
 		return self.source_text[export_dec.lex_start:export_dec.lex_end]
 
+	@visit.on( 'role_dec' )
+	def generateRoleCode(self, role_dec, monotone_facts):
+		pass
+
+	@visit.when( ast.RoleSigDec )
+	def generateRoleCode(self, role_dec, monotone_facts):
+		role_sig_codes = "role %s :: %s." % (role_dec.name, self.generateType( role_dec.type ) )
+		return role_sig_codes
+
+	@visit.when( ast.RoleDefDec )
+	def generateRoleCode(self, role_dec, monotone_facts):
+		if len(monotone_facts.keys()) > 0:
+			mono_init_code = ", %s" % (','.join(map(lambda m: self.generateFact( ast.FactLoc(role_dec.loc, m['lock']) ),monotone_facts.values())))
+		else:
+			mono_init_code = ""
+		role_def_codes = "role [%s]%s = %s%s" % (self.generateTerm(role_dec.loc), self.generateFact(role_dec.fact)
+                                                        ,self.generateFact(role_dec.facts), mono_init_code)
+		if len(role_dec.where) > 0:
+			role_def_codes += " where %s." % (','.join(map(lambda w: self.generateAssignDec(w),role_dec.where)))
+		else:
+			role_def_codes += "."
+		return role_def_codes
+
 	def generateExecuteCodes(self, execute_dec, monotone_facts):
 		return foldl( map(lambda d: self.generateExecuteCode(d, monotone_facts), execute_dec.decs), [] )
 
@@ -150,13 +179,20 @@ class Choreographic(Transformer):
 	@visit.when( ast.ExistDec )
 	def generateExecuteCode(self, exec_dec, monotone_facts):
 		exist_codes = "exists %s." % (','.join(map(lambda v: self.generateTerm(v),exec_dec.exist_vars)))
+		'''
 		mono_init_codes = []
 		if len(monotone_facts.keys()) > 0:
 			for exist_var in exec_dec.exist_vars:
 				mono_init_code = "%s." % (','.join(map(lambda m: self.generateFact( ast.FactLoc(exist_var, m['lock']) ),monotone_facts.values())))
 				mono_init_codes.append( mono_init_code )
-		return [exist_codes] + mono_init_codes
-		
+		'''
+		return [exist_codes] # + mono_init_codes
+
+	@visit.when( ast.InitDec )
+	def generateExecuteCode(self, init_dec, monotone_facts):
+		init_codes = "init %s as %s." % (','.join(map(lambda l: self.generateTerm(l), init_dec.locs)),self.generateFact(init_dec.fact))
+		return [init_codes]
+
 	@visit.when( ast.LocFactDec )
 	def generateExecuteCode(self, exec_dec, monotone_facts):
 		return ["%s." % (','.join(map(lambda f: self.generateFact(f), exec_dec.loc_facts)))]
