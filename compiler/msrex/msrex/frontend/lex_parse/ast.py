@@ -306,6 +306,14 @@ class RoleSigDec(ASTNode):
 		self.hl_end = self.hl_start + len(self.name)
 	def __str__(self):
 		return "role_sig_dec(%s,%s)" % (self.name,self.type)
+	def arg_types(self):
+		if self.type == None:
+			return []
+		type_kind = self.type.type_kind
+		if type_kind == TYPE_TUP:
+			return self.type.types
+		else:
+			return [self.type]
 
 class RoleDefDec(ASTNode):
 	def __init__(self, loc, fact, facts, where=[], parse_frag=None): 
