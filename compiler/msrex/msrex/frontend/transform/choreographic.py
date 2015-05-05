@@ -40,6 +40,8 @@ from msrex.misc.template import compile_template, template, compact
 
 from msrex.frontend.analyze.smt_solver import tyDest
 
+USE_IN_TRANS_THROTTLE = False;
+
 # This class executes a choreographic transformation of system-centric programs into
 # node-centric ones.
 class Choreographic(Transformer):
@@ -237,36 +239,64 @@ class Choreographic(Transformer):
 
 		sync_pred_infos.append( sync_pred_info )
 
-		nc_comp_template = template('''
-		rule {|rule_name|}Test :: -{ [{|p_loc|}]{|in_trans|}(_) }, {|all_pri_facts|} \ 1
-				{|p_grds|} --o exists {|exist_var|}. [{|p_loc|}]{|in_trans|}({|exist_var|}), {|probe_facts|}.
+		if USE_IN_TRANS_THROTTLE:
+			nc_comp_template = template('''
+			rule {|rule_name|}Test :: -{ [{|p_loc|}]{|in_trans|}(_) }, {|all_pri_facts|} \ 1
+					{|p_grds|} --o exists {|exist_var|}. [{|p_loc|}]{|in_trans|}({|exist_var|}), {|probe_facts|}.
 
-		{| '\\n\\n'.join( probe_rule_codes ) |}
-		rule {|rule_name|}Engage :: [{|p_loc|}]{|in_trans|}({|exist_var|}) \ {|ready_facts|} --o {|init_fact|}.
+			{| '\\n\\n'.join( probe_rule_codes ) |}
+			rule {|rule_name|}Engage :: [{|p_loc|}]{|in_trans|}({|exist_var|}) \ {|ready_facts|} --o {|init_fact|}.
 
-		rule {|rule_name|}Init :: {| p_prop_facts |}{|init_fact|}{| p_lk_facts |}{| p_simp_facts |}
-				{|p_grds|} --o {|p_lhs_fact|}, {| req_facts |}.
+			rule {|rule_name|}Init :: {| p_prop_facts |}{|init_fact|}{| p_lk_facts |}{| p_simp_facts |}
+					{|p_grds|} --o {|p_lhs_fact|}, {| req_facts |}.
 
-		{| '\\n\\n'.join( req_succ_rule_codes ) |}
-		rule {|rule_name|}Commit :: [{|p_loc|}]{|in_trans|}({|exist_var|}), {|all_lhs_facts|}
-				--o {|rule_body|}
-				    {|where_clauses|}
+			{| '\\n\\n'.join( req_succ_rule_codes ) |}
+			rule {|rule_name|}Commit :: [{|p_loc|}]{|in_trans|}({|exist_var|}), {|all_lhs_facts|}
+					--o {|rule_body|}
+					    {|where_clauses|}
 
-		{| '\\n\\n'.join( req_fail_rule_codes ) |}
-		rule {|rule_name|}Abort{|p_loc|} :: {| p_abort_fact |} \ [{|p_loc|}]{|in_trans|}({|exist_var|}), {|p_lhs_fact|}
-				--o {|p_lksimp_facts|}.
+			{| '\\n\\n'.join( req_fail_rule_codes ) |}
+			rule {|rule_name|}Abort{|p_loc|} :: {| p_abort_fact |} \ [{|p_loc|}]{|in_trans|}({|exist_var|}), {|p_lhs_fact|}
+					--o {|p_lksimp_facts|}.
 
-		{| '\\n\\n'.join( abort_rule_codes ) |}
-		''')
+			{| '\\n\\n'.join( abort_rule_codes ) |}
+			''')
+		else:
+			nc_comp_template = template('''
+			rule {|rule_name|}Test :: -{ {|not_exist_probe_fact|} }, {|all_pri_facts|} \ 1
+					{|p_grds|} --o exists {|exist_var|}. {|pri_probe_fact|}, {|probe_facts|}.
+
+			{| '\\n\\n'.join( probe_rule_codes ) |}
+			rule {|rule_name|}Engage :: {|pri_probe_fact|}, {|ready_facts|} --o {|init_fact|}.
+
+			rule {|rule_name|}Init :: -{ [{|p_loc|}]{|in_trans|}(P__) },{| p_prop_facts |} \ {|init_fact|}{| p_lk_facts |},{| p_simp_facts |}
+					{|p_grds|} --o [{|p_loc|}]{|in_trans|}({|exist_var|}), {|p_lhs_fact|}, {| req_facts |}.
+
+			{| '\\n\\n'.join( req_succ_rule_codes ) |}
+			rule {|rule_name|}Commit :: [{|p_loc|}]{|in_trans|}({|exist_var|}), {|all_lhs_facts|}
+					--o {|rule_body|}
+					    {|where_clauses|}
+
+			{| '\\n\\n'.join( req_fail_rule_codes ) |}
+			rule {|rule_name|}Abort{|p_loc|} :: {| p_abort_fact |} \ [{|p_loc|}]{|in_trans|}({|exist_var|}), {|p_lhs_fact|}
+					--o {|p_lksimp_facts|}.
+
+			{| '\\n\\n'.join( abort_rule_codes ) |}
+			''')
 
 		probe_facts = ', '.join( map(lambda (loc,info): self.generateSyncPredFact(loc, info['name'], info['args']), sync_pred_info['probe'].items()) )
 
 		probe_rule_codes = []
 		for other_loc in other_obligations:
-			probe_rule_template = template('''
-			rule {|rule_name|}Probe{|o_loc|} :: { [{|o_loc|}]{|in_trans|}(P__)|P__->Ps__ }, {|all_o_facts|} 
-					\ {|probe_fact|} | {|o_grds|}strongest({|exist_var|},Ps__) --o {|ready_fact|}.
-			''')
+			if USE_IN_TRANS_THROTTLE:
+				probe_rule_template = template('''
+				rule {|rule_name|}Probe{|o_loc|} :: { [{|o_loc|}]{|in_trans|}(P__)|P__->Ps__ }, {|all_o_facts|} 
+						\ {|probe_fact|} | {|o_grds|}hasStronger(Ps__,{|exist_var|}) --o {|ready_fact|}.
+				''')
+			else:
+				probe_rule_template = template('''
+				rule {|rule_name|}Probe{|o_loc|} :: -{ [{|o_loc|}]{|in_trans|}(P__) }, {|all_o_facts|} \ {|probe_fact|} --o {|ready_fact|}.
+				''')
 			probe_info = sync_pred_info['probe'][other_loc]
 			ready_info = sync_pred_info['ready'][other_loc]
 			probe_rule_args = { 'rule_name'  : rule_name
@@ -322,13 +352,13 @@ class Choreographic(Transformer):
 		p_prop_fact_info = retrieveFacts(primary_obligation, props=True, triggers=True, facts=True)
 		p_simp_fact_info = retrieveFacts(primary_obligation, simps=True, triggers=True, facts=True)
 		if len(p_prop_fact_info) > 0:
-			p_prop_facts = "%s \\" % self.generateFact( p_prop_fact_info )
+			p_prop_facts = "%s" % self.generateFact( p_prop_fact_info )
 		else:
-			p_prop_facts = ""
+			p_prop_facts = "1"
 		if len(p_simp_fact_info) > 0:
-			p_simp_facts = ", %s" % self.generateFact( p_simp_fact_info )
+			p_simp_facts = "%s" % self.generateFact( p_simp_fact_info )
 		else:
-			p_simp_facts = ""
+			p_simp_facts = "1"
 
 		req_facts = ', '.join( map(lambda (loc,info): self.generateSyncPredFact(loc, info['name'], info['args']), sync_pred_info['req'].items()) )
 
@@ -350,12 +380,14 @@ class Choreographic(Transformer):
 		req_fail_rule_codes = []
 		for other_loc in other_obligations:
 			req_fail_rule_template = template('''
-			rule {|rule_name|}Req{|o_loc|}Fail :: {|req_fact|} --o {|abort_fact|}.
+			rule {|rule_name|}Req{|o_loc|}Fail :: { [{|o_loc|}]{|in_trans|}(P__)|P__->Ps__ } \ {|req_fact|} | hasStronger(Ps__,{|exist_var|}) --o {|abort_fact|}.
 			''')
 			req_info = sync_pred_info['req'][other_loc]
 			req_fail_rule_args = { 'rule_name'  : rule_name
-                                             , 'o_loc'      : other_loc
+                                             , 'o_loc'      : other_loc                                          
+                                             , 'in_trans'   : sync_template_args['inTrans']
 			                     , 'req_fact'   : self.generateSyncPredFact(other_loc, req_info['name'], req_info['args'])
+                                             , 'exist_var'  : self.generateTerm(exist_var)
                                              , 'abort_fact' : self.generateSyncPredFact(primary_loc, sync_pred_info['abort']['name'], sync_pred_info['abort']['args']) }
 			req_fail_rule_codes.append( compile_template(req_fail_rule_template, **req_fail_rule_args) )
 
@@ -389,6 +421,9 @@ class Choreographic(Transformer):
                                , 'all_pri_facts' : self.generateFact( retrieveAll(primary_obligation) )
                                , 'p_grds' :  "| %s" % (','.join(map(lambda g: self.generateTerm(g),primary_guards))) if len(primary_guards) > 0 else ""
                                , 'exist_var' : self.generateTerm(exist_var)
+                               , 'not_exist_probe_fact' : self.generateSyncPredFact(primary_loc, sync_pred_info['primary_probe']['name']
+                                                                                   ,[ast.TermUnderscore()] + sync_pred_info['primary_probe']['args'][1:])
+                               , 'pri_probe_fact' : self.generateSyncPredFact(primary_loc, sync_pred_info['primary_probe']['name'], sync_pred_info['primary_probe']['args'])
                                , 'probe_facts' : probe_facts
                                , 'probe_rule_codes' : probe_rule_codes
                                , 'ready_facts' : ready_facts
@@ -425,6 +460,7 @@ class Choreographic(Transformer):
 		sync_pred_info = { 'init'        : { 'name':'%sInit' % rule_name, 'args':[exist_var]+other_loc_vars }
                                  , 'abort'       : { 'name':'%sAbort' % rule_name, 'args':[exist_var] }
                                  , 'primary_lhs' : { 'name':'%sLHS%s' % (rule_name,primary_loc), 'args':[exist_var]+primary_vars }
+                                 , 'primary_probe' : { 'name':'%sProbe%s' % (rule_name,primary_loc), 'args':[exist_var]+other_loc_vars }
                                  }
 
 		probe_info = {}
@@ -477,6 +513,7 @@ class Choreographic(Transformer):
 		''')
 		sync_pred_codes = []
 		for sync_pred_info in sync_pred_infos:
+			pri_probe_pred_dec = self.generateSyncPredDec(sync_pred_info['primary_probe']['name'], sync_pred_info['primary_probe']['args'])
 			init_pred_dec   = self.generateSyncPredDec(sync_pred_info['init']['name'], sync_pred_info['init']['args'])
 			abort_pred_dec  = self.generateSyncPredDec(sync_pred_info['abort']['name'], sync_pred_info['abort']['args'])
 			prilhs_pred_dec = self.generateSyncPredDec(sync_pred_info['primary_lhs']['name'], sync_pred_info['primary_lhs']['args'])
@@ -485,6 +522,7 @@ class Choreographic(Transformer):
 			req_pred_decs   = map(lambda p: self.generateSyncPredDec(p['name'], p['args']), sync_pred_info['req'].values())
 			lhs_pred_decs   = map(lambda p: self.generateSyncPredDec(p['name'], p['args']), sync_pred_info['lhs'].values())
 			sync_pred_code  = compile_template(template('''
+				{| pri_probe_pred_dec |}
 				{| '\\n'.join( probe_pred_decs ) |}
 				{| '\\n'.join( ready_pred_decs ) |}
 				{| init_pred_dec |}
@@ -492,12 +530,13 @@ class Choreographic(Transformer):
 				{| prilhs_pred_dec |}
 				{| '\\n'.join( lhs_pred_decs ) |}
 				{| abort_pred_dec |}
-			'''), probe_pred_decs=probe_pred_decs, ready_pred_decs=ready_pred_decs, init_pred_dec=init_pred_dec,
+			'''), pri_probe_pred_dec=pri_probe_pred_dec, probe_pred_decs=probe_pred_decs, ready_pred_decs=ready_pred_decs, init_pred_dec=init_pred_dec,
                               req_pred_decs=req_pred_decs, prilhs_pred_dec=prilhs_pred_dec, lhs_pred_decs=lhs_pred_decs, abort_pred_dec=abort_pred_dec)
 			sync_pred_codes.append( sync_pred_code )		
 
 		sync_export_codes = []
 		for sync_pred_info in sync_pred_infos:
+			pri_probe_export_dec = self.generateSyncExportDec(sync_pred_info['primary_probe']['name'], sync_pred_info['primary_probe']['args'])
 			init_export_dec   = self.generateSyncExportDec(sync_pred_info['init']['name'], sync_pred_info['init']['args'])
 			abort_export_dec  = self.generateSyncExportDec(sync_pred_info['abort']['name'], sync_pred_info['abort']['args'])
 			prilhs_export_dec = self.generateSyncExportDec(sync_pred_info['primary_lhs']['name'], sync_pred_info['primary_lhs']['args'])
@@ -506,7 +545,7 @@ class Choreographic(Transformer):
 			req_export_decs   = map(lambda p: self.generateSyncExportDec(p['name'], p['args']), sync_pred_info['req'].values())
 			lhs_export_decs   = map(lambda p: self.generateSyncExportDec(p['name'], p['args']), sync_pred_info['lhs'].values())
 			sync_export_code  = compile_template(template('''
-				export query {|in_trans|}(_).
+				{| pri_probe_export_dec |}
 				{| '\\n'.join( probe_export_decs ) |}
 				{| '\\n'.join( ready_export_decs ) |}
 				{| init_export_dec |}
@@ -514,15 +553,19 @@ class Choreographic(Transformer):
 				{| prilhs_export_dec |}
 				{| '\\n'.join( lhs_export_decs ) |}
 				{| abort_export_dec |}
-			'''), probe_export_decs=probe_export_decs, ready_export_decs=ready_export_decs, init_export_dec=init_export_dec,
+			'''), pri_probe_export_dec=pri_probe_export_dec, probe_export_decs=probe_export_decs, ready_export_decs=ready_export_decs, init_export_dec=init_export_dec,
                               req_export_decs=req_export_decs, prilhs_export_dec=prilhs_export_dec, lhs_export_decs=lhs_export_decs, 
                               abort_export_dec=abort_export_dec, in_trans=sync_template_args['inTrans'])
 			sync_export_codes.append( sync_export_code )
+		if len(sync_export_codes) > 0:
+			sync_export_codes = ["export query %s(_)." % sync_template_args['inTrans']] + sync_export_codes
 
 		if len(sync_pred_infos) > 0:
 			sync_mod_codes = template('''
 			module comingle.lib.ExtLib import {
 				strongest :: (dest,{dest}) -> bool.
+				hasStronger :: ({dest},dest) -> bool.
+				not :: bool -> bool.
 			}
 			''')
 		else:
