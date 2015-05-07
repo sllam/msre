@@ -69,10 +69,14 @@ class Choreographic(Transformer):
 		for fact_dec in facts:
 			# print "Here: %s %s" % (fact_dec.name,fact_dec.monotone)
 			if not fact_dec.monotone:
-				lock_name = "%sLock" % fact_dec.name
-				monotone_facts[fact_dec.name] = { 'lock':ast.FactBase(lock_name, []) , 'dec':fact_dec }
-				monotone_predlocks_code = "predicate %s :: fact." % lock_name
-				monotone_predlocks_codes.append( monotone_predlocks_code )
+				lock_name   = "%sLock" % fact_dec.name
+				unlock_name = "%sUnlock" % fact_dec.name
+				check_name  = "check%s" % (fact_dec.name[0].upper() + fact_dec.name[1:])
+				monotone_predlocks_codes.append( "predicate %s :: dest -> fact." % lock_name )
+				monotone_predlocks_codes.append( "predicate %s :: dest -> fact." % unlock_name )
+				monotone_predlocks_codes.append( "predicate %s :: fact." % check_name )
+
+				monotone_facts[fact_dec.name] = { 'lock':lock_name, 'unlock':unlock_name, 'check':check_name, 'dec':fact_dec }
 
 		sync_pred_infos = []
 
@@ -85,7 +89,8 @@ class Choreographic(Transformer):
 		export_decs = self.inspect.filter_decs(ensem_dec.decs, export=True)
 		prog_exports_codes = map( lambda export_dec: self.generateExportCode(export_dec), export_decs)
 
-		sync_template_args = { 'inTrans': ext('inTrans', '') }
+		sync_template_args = { 'inTrans'    : ext('inTrans', '')
+                                     , 'checkTrans' : ext('checkTrans', '') }
 
 		rule_decs = self.inspect.filter_decs(ensem_dec.decs, rule=True)
 		prog_rules_codes = map( lambda rule_dec: self.generateRuleCode(rule_dec, self.required(), sync_pred_infos, monotone_facts, sync_template_args), rule_decs)
@@ -112,12 +117,25 @@ class Choreographic(Transformer):
 			{| '\\n'.join( sync_exports_codes ) |}
 
 			{| '\\n\\n'.join( prog_rules_codes ) |}
+
+			{| '\\n'.join( common_sync_rule_codes ) |}
 		}
 
 		execute {| ensem_name |} {
 			{| '\\n'.join( prog_execute_codes ) |}
 		}
 		''')
+
+		if len(sync_pred_infos) > 0:
+			common_sync_rule_codes = ["rule checkTrans :: { [X]%s() } --o 1." % sync_template_args['checkTrans']]
+
+			for fact_name,mono_info in monotone_facts.items():
+				common_sync_rule_codes.append( "rule %sUnlock :: [X]%s(T__), { [X]%s(T__) } --o [X]%s()." % (fact_name,mono_info['unlock'],mono_info['lock'],mono_info['check']) )
+
+			for fact_name,mono_info in monotone_facts.items():
+				common_sync_rule_codes.append( "rule check%s :: { [X]%s() } --o 1." % (fact_name,mono_info['check']) )
+		else:
+			common_sync_rule_codes = []
 
 		prog_execute_codes = self.generateExecuteCodes(execute_dec, monotone_facts)
 
@@ -132,6 +150,7 @@ class Choreographic(Transformer):
                                           , 'sync_exports_codes' : sync_exports_codes
                                           , 'prog_exports_codes' : prog_exports_codes
                                           , 'prog_rules_codes'   : prog_rules_codes
+                                          , 'common_sync_rule_codes' : common_sync_rule_codes
                                           , 'prog_execute_codes' : prog_execute_codes }
 
 		self.node_centric_prog_codes = compile_template(node_centric_template, **top_level_template_args)
@@ -160,7 +179,8 @@ class Choreographic(Transformer):
 	@visit.when( ast.RoleDefDec )
 	def generateRoleCode(self, role_dec, monotone_facts):
 		if len(monotone_facts.keys()) > 0:
-			mono_init_code = ", %s" % (','.join(map(lambda m: self.generateFact( ast.FactLoc(role_dec.loc, m['lock']) ),monotone_facts.values())))
+			# mono_init_code = ", %s" % (','.join(map(lambda m: self.generateFact( ast.FactLoc(role_dec.loc, m['lock']) ),monotone_facts.values())))
+			mono_init_code = ""
 		else:
 			mono_init_code = ""
 		role_def_codes = "role [%s]%s = %s%s" % (self.generateTerm(role_dec.loc), self.generateFact(role_dec.fact)
@@ -225,16 +245,17 @@ class Choreographic(Transformer):
 		other_guards         = nbr_spec['other_guards']
 		primary_has_triggers = nbr_spec['primary_has_trigger']
 
-		# Compute lock acquisition
-		lock_pred_acq = {}
-		lock_pred_acq[primary_loc] = self.generateLockFacts(retrieveAll(primary_obligation), monotone_facts, primary_loc)
-		for other_loc in other_obligations:
-			lock_pred_acq[other_loc] = self.generateLockFacts(retrieveAll(other_obligations[other_loc]), monotone_facts, other_loc)
-
 		rule_name = rule_dec.name
 		exist_var = ast.TermVar("T__")
 		exist_var.type = ast.TypeCons("dest")
 		exist_var.smt_type = tyDest
+
+		# Compute lock acquisition
+		lock_pats = {}
+		lock_pats[primary_loc] = self.generateLockFacts(retrieveAll(primary_obligation), monotone_facts, primary_loc, exist_var.name)
+		for other_loc in other_obligations:
+			lock_pats[other_loc] = self.generateLockFacts(retrieveAll(other_obligations[other_loc]), monotone_facts, other_loc, exist_var.name)
+
 		sync_pred_info = self.generateSyncPreds(rule_name, exist_var, primary_loc, primary_obligation, other_obligations)
 
 		sync_pred_infos.append( sync_pred_info )
@@ -269,17 +290,17 @@ class Choreographic(Transformer):
 			{| '\\n\\n'.join( probe_rule_codes ) |}
 			rule {|rule_name|}Engage :: {|pri_probe_fact|}, {|ready_facts|} --o {|init_fact|}.
 
-			rule {|rule_name|}Init :: -{ [{|p_loc|}]{|in_trans|}(P__) },{| p_prop_facts |} \ {|init_fact|}{| p_lk_facts |},{| p_simp_facts |}
-					{|p_grds|} --o [{|p_loc|}]{|in_trans|}({|exist_var|}), {|p_lhs_fact|}, {| req_facts |}.
+			rule {|rule_name|}Init :: -{ [{|p_loc|}]{|in_trans|}(P__) },{ [{|p_loc|}]{|check_trans|}() },{| p_lk_lhs_facts |},{| p_prop_facts |} 
+                                        \ {|init_fact|}, {| p_simp_facts |}
+					{|p_grds|} --o {| p_lk_rhs_facts |}, [{|p_loc|}]{|in_trans|}({|exist_var|}), {|p_lhs_fact|}, {| req_facts |}.
 
 			{| '\\n\\n'.join( req_succ_rule_codes ) |}
 			rule {|rule_name|}Commit :: [{|p_loc|}]{|in_trans|}({|exist_var|}), {|all_lhs_facts|}
-					--o {|rule_body|}
-					    {|where_clauses|}
+					--o {|rule_body|}, {|all_unlk_facts|}, [{|p_loc|}]{|check_trans|}() {|where_clauses|}
 
 			{| '\\n\\n'.join( req_fail_rule_codes ) |}
 			rule {|rule_name|}Abort{|p_loc|} :: {| p_abort_fact |} \ [{|p_loc|}]{|in_trans|}({|exist_var|}), {|p_lhs_fact|}
-					--o {|p_lksimp_facts|}.
+					--o {|p_simp_facts|}, {|p_unlk_facts|}, [{|p_loc|}]{|check_trans|}().
 
 			{| '\\n\\n'.join( abort_rule_codes ) |}
 			''')
@@ -295,13 +316,14 @@ class Choreographic(Transformer):
 				''')
 			else:
 				probe_rule_template = template('''
-				rule {|rule_name|}Probe{|o_loc|} :: -{ [{|o_loc|}]{|in_trans|}(P__) }, {|all_o_facts|} \ {|probe_fact|} --o {|ready_fact|}.
+				rule {|rule_name|}Probe{|o_loc|} :: -{ [{|o_loc|}]{|in_trans|}(P__) }, { [{|o_loc|}]{|check_trans|}() }, {|all_o_facts|} \ {|probe_fact|} --o {|ready_fact|}.
 				''')
 			probe_info = sync_pred_info['probe'][other_loc]
 			ready_info = sync_pred_info['ready'][other_loc]
 			probe_rule_args = { 'rule_name'  : rule_name
                                           , 'o_loc'      : other_loc
                                           , 'in_trans'   : sync_template_args['inTrans']
+                                          , 'check_trans': sync_template_args['checkTrans']
                                           , 'all_o_facts': self.generateFact( retrieveAll(other_obligations[other_loc]) )
                                           , 'o_grds' : "%s," % self.generateTerm( other_guards[other_loc] ) if len(other_guards[other_loc]) > 0 else ""
                                           , 'probe_fact' : self.generateSyncPredFact(other_loc, probe_info['name'], probe_info['args'])
@@ -313,29 +335,32 @@ class Choreographic(Transformer):
 		req_succ_rule_codes = []
 		for other_loc in other_obligations:
 			req_succ_rule_template = template('''
-			rule {|rule_name|}Req{|o_loc|}Succ :: {| o_prop_facts |}{| o_req_fact |}{| o_lk_facts |}{| o_simp_facts |}
-					{|o_grds|} --o {|o_lhs_fact|}.
+			rule {|rule_name|}Req{|o_loc|}Succ :: {| o_prop_facts |}, {| o_lk_lhs_facts |} \\ {| o_req_fact |}, {| o_simp_facts |}
+					{|o_grds|} --o {| o_lk_rhs_facts |}, {|o_lhs_fact|}.
 			''')
 			req_info = sync_pred_info['req'][other_loc]
-			if len(lock_pred_acq[other_loc].values()) > 0:
-				o_lock_facts = ", %s" % self.generateFact( lock_pred_acq[other_loc].values() )
+			if len(lock_pats[other_loc].values()) > 0:
+				o_lk_lhs_facts = ', '.join( map(lambda l: l['lhs'], lock_pats[other_loc].values()) )
+				o_lk_rhs_facts = ', '.join( map(lambda l: l['lock'], lock_pats[other_loc].values()) )
 			else:
-				o_lock_facts = ""			
+				o_lk_lhs_facts = "1"
+				o_lk_rhs_facts = "1"
 			o_prop_fact_info = retrieveFacts(other_obligations[other_loc], props=True, triggers=True, facts=True)
 			o_simp_fact_info = retrieveFacts(other_obligations[other_loc], simps=True, triggers=True, facts=True)
 			if len(o_prop_fact_info) > 0:
-				o_prop_facts = "%s \\" % self.generateFact( o_prop_fact_info )
+				o_prop_facts = "%s" % self.generateFact( o_prop_fact_info )
 			else:
-				o_prop_facts = ""
+				o_prop_facts = "1"
 			if len(o_simp_fact_info) > 0:
-				o_simp_facts = ", %s" % self.generateFact( o_simp_fact_info )
+				o_simp_facts = "%s" % self.generateFact( o_simp_fact_info )
 			else:
-				o_simp_facts = ""
+				o_simp_facts = "1"
 			o_lhs_info = sync_pred_info['lhs'][other_loc]
 			req_succ_rule_args = { 'rule_name'  : rule_name
                                              , 'o_loc'      : other_loc
                                              , 'o_req_fact' : self.generateSyncPredFact(other_loc, req_info['name'], req_info['args'])
-                                             , 'o_lk_facts' : o_lock_facts
+                                             , 'o_lk_lhs_facts' : o_lk_lhs_facts
+                                             , 'o_lk_rhs_facts' : o_lk_rhs_facts
                                              , 'o_prop_facts' : o_prop_facts
                                              , 'o_simp_facts' : o_simp_facts
                                              , 'o_grds' : "%s," % self.generateTerm( other_guards[other_loc] ) if len(other_guards[other_loc]) > 0 else ""
@@ -344,10 +369,14 @@ class Choreographic(Transformer):
 
 		ready_facts = ', '.join( map(lambda (loc,info): self.generateSyncPredFact(primary_loc, info['name'], info['args']), sync_pred_info['ready'].items()) )
 
-		if len(lock_pred_acq[primary_loc].values()) > 0:
-			p_lock_facts = ", %s" % self.generateFact( lock_pred_acq[primary_loc].values() )
+		if len(lock_pats[primary_loc].values()) > 0:
+			p_lk_lhs_facts = ', '.join( map(lambda l: l['lhs'],lock_pats[primary_loc].values()) )
+			p_lk_rhs_facts = ', '.join( map(lambda l: l['lock'],lock_pats[primary_loc].values()) )
+			p_unlk_facts = ', '.join( map(lambda l: l['unlock'],lock_pats[primary_loc].values()) )
 		else:
-			p_lock_facts = ""
+			p_lk_lhs_facts = "1"
+			p_lk_rhs_facts = "1"
+			p_unlk_facts = "1"
 
 		p_prop_fact_info = retrieveFacts(primary_obligation, props=True, triggers=True, facts=True)
 		p_simp_fact_info = retrieveFacts(primary_obligation, simps=True, triggers=True, facts=True)
@@ -365,17 +394,21 @@ class Choreographic(Transformer):
 		all_lhs_facts  = [self.generateSyncPredFact(primary_loc, sync_pred_info['primary_lhs']['name'], sync_pred_info['primary_lhs']['args'])]
 		all_lhs_facts += map(lambda info: self.generateSyncPredFact(primary_loc, info['name'], info['args']), sync_pred_info['lhs'].values())
 
-		all_lk_facts = []
-		for loc_lks in lock_pred_acq.values():
-			all_lk_facts += loc_lks.values()
+		all_unlk = []
+		for loc_lks in lock_pats.values():
+			all_unlk += map(lambda l: l['unlock'], loc_lks.values())
+		if len(all_unlk) > 0:
+			all_unlk_facts = ', '.join( all_unlk )
+		else:
+			all_unlk_facts = "1"
 		
-		rule_body = self.generateFact( rule_dec.rhs + all_lk_facts )
+		rule_body = self.generateFact( rule_dec.rhs )
 
 		if len( rule_dec.where ) > 0:
 			where_clauses = "where %s." % (", ".join( map(lambda w: self.generateAssignDec(w), rule_dec.where) ))
 		else:
-			where_clauses = ""
-			rule_body += "."
+			where_clauses = "."
+			# rule_body += "."
 
 		req_fail_rule_codes = []
 		for other_loc in other_obligations:
@@ -391,33 +424,35 @@ class Choreographic(Transformer):
                                              , 'abort_fact' : self.generateSyncPredFact(primary_loc, sync_pred_info['abort']['name'], sync_pred_info['abort']['args']) }
 			req_fail_rule_codes.append( compile_template(req_fail_rule_template, **req_fail_rule_args) )
 
-		p_simp_lk_facts = self.generateFact( lock_pred_acq[primary_loc].values() + p_simp_fact_info, rhs=True )
-		if len(p_simp_lk_facts) == 0:
-			p_simp_lk_facts = "1"
-
 		abort_rule_codes = []
 		for other_loc in other_obligations:
 			abort_rule_template = template('''
 			rule {|rule_name|}Abort{|o_loc|} :: {| o_abort_fact |} \ {| o_lhs_fact |}
-					--o {| o_lksimp_facts |}.
+					--o {| o_simp_facts |}, {| o_unlk_facts |}.
 			''')
 			lhs_info = sync_pred_info['lhs'][other_loc]
 			o_simp_fact_info = retrieveFacts(other_obligations[other_loc], simps=True, triggers=True, facts=True)
-			o_lk_fact_info   = lock_pred_acq[other_loc].values()
-			if len(o_simp_fact_info + o_lk_fact_info) > 0:
-				o_lksimp_facts = self.generateFact( o_lk_fact_info + o_simp_fact_info, rhs=True )
+			if len(o_simp_fact_info) > 0:
+				o_simp_facts = self.generateFact( o_simp_fact_info, rhs=True )
 			else:
-				o_lksimp_facts = "1"
-			abort_rule_args = { 'rule_name'      : rule_name
-                                          , 'o_loc'          : other_loc
-                                          , 'o_abort_fact'   : self.generateSyncPredFact(primary_loc, sync_pred_info['abort']['name'], sync_pred_info['abort']['args'])
-                                          , 'o_lhs_fact'     : self.generateSyncPredFact(primary_loc, lhs_info['name'], lhs_info['args'])
-                                          , 'o_lksimp_facts' : o_lksimp_facts }
+				o_simp_facts = "1"
+			unlock_facts = map(lambda l: l['unlock'], lock_pats[other_loc].values())
+			if len(unlock_facts) > 0:
+				o_unlk_facts = ', '.join( unlock_facts )
+			else:
+				o_unlk_facts = "1"
+			abort_rule_args = { 'rule_name'    : rule_name
+                                          , 'o_loc'        : other_loc
+                                          , 'o_abort_fact' : self.generateSyncPredFact(primary_loc, sync_pred_info['abort']['name'], sync_pred_info['abort']['args'])
+                                          , 'o_lhs_fact'   : self.generateSyncPredFact(primary_loc, lhs_info['name'], lhs_info['args'])
+                                          , 'o_simp_facts' : o_simp_facts
+                                          , 'o_unlk_facts' : o_unlk_facts }
 			abort_rule_codes.append( compile_template( abort_rule_template, **abort_rule_args) )
 
 		nc_comp_args = { 'rule_name' : rule_name
                                , 'p_loc'     : primary_loc
-                               , 'in_trans'  : sync_template_args['inTrans']
+                               , 'in_trans'    : sync_template_args['inTrans']
+                               , 'check_trans' : sync_template_args['checkTrans']
                                , 'all_pri_facts' : self.generateFact( retrieveAll(primary_obligation) )
                                , 'p_grds' :  "| %s" % (','.join(map(lambda g: self.generateTerm(g),primary_guards))) if len(primary_guards) > 0 else ""
                                , 'exist_var' : self.generateTerm(exist_var)
@@ -428,18 +463,19 @@ class Choreographic(Transformer):
                                , 'probe_rule_codes' : probe_rule_codes
                                , 'ready_facts' : ready_facts
                                , 'init_fact' : self.generateSyncPredFact(primary_loc, sync_pred_info['init']['name'], sync_pred_info['init']['args'])
-                               , 'p_lk_facts': p_lock_facts
+                               , 'p_lk_lhs_facts': p_lk_lhs_facts
+                               , 'p_lk_rhs_facts': p_lk_rhs_facts
+                               , 'p_unlk_facts': p_unlk_facts
                                , 'p_prop_facts': p_prop_facts
                                , 'p_simp_facts': p_simp_facts
                                , 'p_lhs_fact' : self.generateSyncPredFact(primary_loc, sync_pred_info['primary_lhs']['name'], sync_pred_info['primary_lhs']['args']) 
                                , 'req_facts'  : req_facts
                                , 'req_succ_rule_codes' : req_succ_rule_codes
                                , 'all_lhs_facts' : ', '.join( all_lhs_facts )
-                               , 'all_lk_facts'  : all_lk_facts
+                               , 'all_unlk_facts'  : all_unlk_facts
                                , 'rule_body' : rule_body
                                , 'where_clauses' : where_clauses
                                , 'req_fail_rule_codes' : req_fail_rule_codes
-                               , 'p_lksimp_facts' : p_simp_lk_facts
                                , 'p_abort_fact' : self.generateSyncPredFact(primary_loc, sync_pred_info['abort']['name'], sync_pred_info['abort']['args'])
                                , 'abort_rule_codes' : abort_rule_codes }
 
@@ -492,16 +528,20 @@ class Choreographic(Transformer):
 	def generateSyncExportDec(self, sync_pred_name, sync_pred_args):
 		return "export query %s(%s)." % (sync_pred_name,','.join(map(lambda _:"_",sync_pred_args)))
 
-	def generateLockFacts(self, fact_list, monotone_facts, loc):
-		lock_preds = {}
+	def generateLockFacts(self, fact_list, monotone_facts, loc, exist_var):
+		lock_pats = {}
 		for locfact in fact_list:
 			if locfact.fact_type == ast.FACT_LOC:
 				name = locfact.fact.name
 			else:
 				name = locfact.facts[0].fact.name
 			if name in monotone_facts:
-				lock_preds[name] = ast.FactLoc( ast.TermVar(loc), monotone_facts[name]['lock'] )
-		return lock_preds
+				mono_info = monotone_facts[name]
+				# lock_preds[name] = ast.FactLoc( ast.TermVar(loc), monotone_facts[name]['lock'] )
+				lock_pats[name] = { 'lhs'    : "-{ [%s]%s(L__) | not(L__==%s) }, { [%s]%s() }" % (loc,mono_info['lock'],exist_var,loc,mono_info['check'])
+                                                   , 'lock'   : "[%s]%s(%s)" % (loc,mono_info['lock'],exist_var)
+                                                   , 'unlock' : "[%s]%s(%s)" % (loc,mono_info['unlock'],exist_var) }
+		return lock_pats
 
 	def generateSyncPredFact(self, sync_pred_loc, sync_pred_name, sync_pred_args):
 		return "[%s]%s(%s)" % (sync_pred_loc, sync_pred_name, ','.join(map(lambda a: self.generateTerm(a),sync_pred_args))) 
@@ -509,6 +549,7 @@ class Choreographic(Transformer):
 	def generateSyncPredCodes(self, sync_pred_infos, sync_template_args):
 		sync_pred_template = template('''
 			predicate {|inTrans|} :: dest -> fact.
+			predicate {|checkTrans|} :: fact.
 			{| '\\n'.join( sync_pred_codes ) |}
 		''')
 		sync_pred_codes = []
@@ -558,7 +599,7 @@ class Choreographic(Transformer):
                               abort_export_dec=abort_export_dec, in_trans=sync_template_args['inTrans'])
 			sync_export_codes.append( sync_export_code )
 		if len(sync_export_codes) > 0:
-			sync_export_codes = ["export query %s(_)." % sync_template_args['inTrans']] + sync_export_codes
+			sync_export_codes = ["export query %s(_)." % sync_template_args['inTrans'],"export query %s()." % sync_template_args['checkTrans']] + sync_export_codes
 
 		if len(sync_pred_infos) > 0:
 			sync_mod_codes = template('''
@@ -571,7 +612,7 @@ class Choreographic(Transformer):
 		else:
 			sync_mod_codes = ""
 			
-		sync_pred_codes = compile_template(sync_pred_template, inTrans=sync_template_args['inTrans'], sync_pred_codes=sync_pred_codes)
+		sync_pred_codes = compile_template(sync_pred_template, inTrans=sync_template_args['inTrans'], checkTrans=sync_template_args['checkTrans'], sync_pred_codes=sync_pred_codes)
 
 		return sync_mod_codes, sync_pred_codes, sync_export_codes
 
