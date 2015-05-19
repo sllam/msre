@@ -51,6 +51,9 @@ if USE_Z3:
 	tyTuple = types.tyTuple
 	tyUnit  = types.tyUnit
 	tyArrow = types.tyArrow
+
+	tyTime = types.tyTime
+
 	type_to_data_sort = base.type_to_data_sort
 
 	# Convert a z3 SMT type to MSRE ast type
@@ -70,6 +73,8 @@ if USE_Z3:
 			return ast.TypeCons( ast.STRING )
 		elif dt_name == types.TY_BOOL:
 			return ast.TypeCons( ast.BOOL )
+		elif dt_name == types.TY_TIME:
+			return ast.TypeCons( ast.TIME )
 		elif dt_name == types.TY_LIST:
 			ast_type = coerce_type(smt_type.arg(0))
 			return ast.TypeList( ast_type )

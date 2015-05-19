@@ -33,6 +33,7 @@ CHAR   = 'char'
 STRING = 'string'
 BOOL   = 'bool'
 DEST   = 'dest'
+TIME   = 'time'
 
 BOOL_CONSTANTS = ['true','false']
 

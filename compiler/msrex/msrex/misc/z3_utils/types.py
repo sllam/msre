@@ -47,6 +47,7 @@ TY_MSET  = 'mset'
 TY_TUPLE = 'tuple'
 TY_UNIT  = 'unit'
 TY_ARROW = 'arrow'
+TY_TIME  = 'time'
 
 def init_default_type():
 	Type = z3.Datatype('Type')
@@ -62,6 +63,8 @@ def init_default_type():
 	Type.declare(TY_TUPLE, ('left',Type), ('right',Type))
 	Type.declare(TY_UNIT)
 	Type.declare(TY_ARROW, ('in',Type), ('out',Type))
+
+	Type.declare(TY_TIME)
 
 	# Insert new types
 
@@ -107,5 +110,6 @@ tyUnit = smt_type.unit
 def tyArrow(inpt, outpt):
 	return smt_type.arrow(inpt, outpt)
 
+tyTime = smt_type.time
 
 

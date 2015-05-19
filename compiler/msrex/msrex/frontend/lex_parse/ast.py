@@ -32,6 +32,7 @@ CHAR   = "char"
 STRING = "string"
 DEST   = "dest"
 BOOL   = "bool"
+TIME   = "time"
 
 EQ  = "=="
 NEQ = "!="
@@ -48,7 +49,7 @@ MINUS = "-"
 TIMES = "*"
 DIV   = "/"
 
-BASE_TYPES = [LOC,INT,FLOAT,CHAR,STRING,DEST,BOOL]
+BASE_TYPES = [LOC,INT,FLOAT,CHAR,STRING,DEST,BOOL,TIME]
 BOOL_OPS_1 = [EQ,NEQ,GT,LT,GEQ,LEQ]
 BOOL_OPS_2 = [IN]
 BOOL_OPS_3 = [NOT]

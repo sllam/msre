@@ -37,7 +37,7 @@ from msrex.misc.z3_utils.types import tyVar, tyLoc, tyInt, tyBool, tyFloat, tyCh
 from msrex.misc.z3_utils.coerce import type_to_data_sort
 '''
 from msrex.misc.smt_utils import Eq, Or, just, min_unsat_subset
-from msrex.frontend.analyze.smt_solver import Solver, tyVar, tyLoc, tyInt, tyBool, tyFloat, tyChar, tyStr, tyDest, tyList, tyMSet, tyTuple, tyUnit, tyArrow, type_to_data_sort, coerce_type
+from msrex.frontend.analyze.smt_solver import Solver, tyVar, tyLoc, tyInt, tyBool, tyFloat, tyChar, tyStr, tyDest, tyList, tyMSet, tyTuple, tyUnit, tyArrow, tyTime, type_to_data_sort, coerce_type
 
 from msrex.frontend.analyze.inspectors import Inspector
 from msrex.frontend.analyze.checkers.base_checker import Checker
@@ -71,6 +71,8 @@ def smt_base_type(name):
 		return tyStr
 	elif name == "bool":
 		return tyBool
+	elif name == "time":
+		return tyTime
 	else:
 		return tyDest
 

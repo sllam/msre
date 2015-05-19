@@ -126,7 +126,7 @@ class FactPropertyExtractor(Checker):
 							loc_fact.fact.local = False
 						else:
 							if loc_var in map(lambda tv: tv.name, inspect.free_vars( comp.comp_ranges[0].term_vars )):
-								non_local_pred_name[ loc_fact.fact.name ] = ()
+								non_local_pred_names[ loc_fact.fact.name ] = ()
 								loc_fact.fact.local = False
 
 			# Scan for LHS comprehension predicate names
